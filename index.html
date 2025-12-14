@@ -769,12 +769,19 @@
 
                                 <div className="md:col-span-5 w-full">
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">音量: {Math.round(newVolume * 100)}%</label>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <IconVolume2 className="w-5 h-5 text-gray-400" />
                                         <input 
-                                            type="range" min="0" max="1" step="0.01" value={newVolume} onChange={(e) => setNewVolume(parseFloat(e.target.value))}
+                                            type="range" min="0" max="1.5" step="0.01" value={newVolume} onChange={(e) => setNewVolume(parseFloat(e.target.value))}
                                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
                                         />
+                                        <button 
+                                            onClick={() => setNewVolume(1)} 
+                                            className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition flex-shrink-0"
+                                            title="音量を100%に戻す"
+                                        >
+                                            リセット
+                                        </button>
                                     </div>
                                 </div>
 
@@ -788,6 +795,233 @@
                                 </div>
                             </div>
                         </div>
+
+                        {/* スケジュール一覧 */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconCalendar /></span>
+                                ステップ 3: 登録済みスケジュール
+                            </h2>
+
+                            {/* インポート・エクスポートボタン */}
+                            <div className="flex gap-2 mb-4">
+                                <button onClick={() => importInputRef.current.click()} className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
+                                    <IconImport />
+                                    <span>インポート</span>
+                                </button>
+                                <input type="file" accept=".json" onChange={handleImport} ref={importInputRef} className="hidden" />
+                                <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
+                                    <IconExport />
+                                    <span>エクスポート</span>
+                                </button>
+                            </div>
+
+                            {schedules.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                    <p>登録されているスケジュールはありません。</p>
+                                    <p className="text-sm mt-1">上のフォームから新しいスケジュールを追加してください。</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {schedules.sort((a, b) => a.time.localeCompare(b.time)).map((schedule) => (
+                                        <div 
+                                            key={schedule.id} 
+                                            className={`
+                                                p-4 rounded-lg border-l-4 transition-all duration-300
+                                                ${schedule.enabled ? 'bg-white dark:bg-gray-800 border-indigo-500 shadow' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 opacity-60'}
+                                            `}
+                                        >
+                                            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                                                {/* 左側: スケジュール情報 */}
+                                                <div className="flex-1 flex items-start gap-4">
+                                                    {/* 有効/無効トグル */}
+                                                    <button onClick={() => toggleSchedule(schedule.id)} className={`p-2 rounded-full ${schedule.enabled ? 'text-green-500' : 'text-gray-400'}`} title={schedule.enabled ? '無効にする' : '有効にする'}>
+                                                        <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center">
+                                                            {schedule.enabled && <IconCheck />}
+                                                        </div>
+                                                    </button>
+                                                    <div>
+                                                        <div className="flex items-baseline gap-3">
+                                                            <span className="text-2xl font-mono font-bold text-gray-800 dark:text-gray-100">{schedule.time}</span>
+                                                            <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300">{schedule.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                                                                <IconMusic className="w-3 h-3" />
+                                                                <span>{(audioSources.find(s => s.id === schedule.audioId) || {name: '未設定'}).name}</span>
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                                                                <IconVolume2 className="w-3 h-3" />
+                                                                <span>{Math.round((schedule.volume ?? 1) * 100)}%</span>
+                                                            </div>
+                                                        </div>
+                                                        {(schedule.scheduleType || 'weekly') === 'weekly' ? (
+                                                            <div className="flex gap-1 mt-1">
+                                                                {DAYS_OF_WEEK.map(day => (
+                                                                    <span 
+                                                                        key={day.id} 
+                                                                        className={`
+                                                                            text-xs px-1.5 py-0.5 rounded
+                                                                            ${schedule.days.includes(day.id)
+                                                                                ? (day.id === 0 ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' : day.id === 6 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-100')
+                                                                                : 'text-gray-300 dark:text-gray-500'}
+                                                                        `}
+                                                                    >
+                                                                        {day.label}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full w-fit">
+                                                                <IconCalendar className="w-3 h-3" />
+                                                                <span>{schedule.specificDate}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* 右側: 操作ボタン */}
+                                                <div className="flex items-center gap-2 mt-4 md:mt-0 w-full md:w-auto justify-end">
+                                                    <button onClick={() => playChime(schedule)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition dark:text-indigo-400 dark:hover:bg-indigo-900" title="テスト再生">
+                                                        <IconPlay />
+                                                    </button>
+                                                    <button onClick={() => openEditModal(schedule)} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition dark:hover:bg-blue-900 dark:hover:text-blue-300" title="編集">
+                                                        <IconEdit />
+                                                    </button>
+                                                    <button onClick={() => deleteSchedule(schedule.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition dark:hover:bg-red-900 dark:hover:text-red-400" title="削除">
+                                                        <IconTrash />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 編集モーダル */}
+                        {editingSchedule && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+                                    <div className="p-4 border-b dark:border-gray-700">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">スケジュールの編集</h3>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        {/* 名前 */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">名前</label>
+                                            <input type="text" value={editingSchedule.name} onChange={(e) => setEditingSchedule({...editingSchedule, name: e.target.value})} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded" />
+                                        </div>
+                                        {/* 時間 */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">時間</label>
+                                            <input type="time" value={editingSchedule.time} onChange={(e) => setEditingSchedule({...editingSchedule, time: e.target.value})} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded font-mono" />
+                                        </div>
+                                        {/* チャイム音 */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">チャイム音</label>
+                                            <select 
+                                                value={editingSchedule.audioId || 'default'} 
+                                                onChange={(e) => setEditingSchedule({...editingSchedule, audioId: e.target.value})}
+                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
+                                            >
+                                                {audioSources.map(source => (
+                                                    <option key={source.id} value={source.id}>{source.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {/* タイプ */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">タイプ</label>
+                                            <div className="flex rounded-md shadow-sm">
+                                                <button onClick={() => setEditingSchedule({...editingSchedule, scheduleType: 'weekly'})} className={`px-4 py-2 text-sm font-medium rounded-l-md flex-1 transition ${editingSchedule.scheduleType === 'weekly' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'}`}>
+                                                    毎週
+                                                </button>
+                                                <button onClick={() => setEditingSchedule({...editingSchedule, scheduleType: 'date'})} className={`px-4 py-2 text-sm font-medium rounded-r-md flex-1 transition ${editingSchedule.scheduleType === 'date' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 -ml-px'}`}>
+                                                    日付指定
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {/* 音量 */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">音量: {Math.round(editingSchedule.volume * 100)}%</label>
+                                            <div className="flex items-center gap-3">
+                                                <IconVolume2 className="w-5 h-5 text-gray-400" />
+                                                <input 
+                                                    type="range" min="0" max="1.5" step="0.01" 
+                                                    value={editingSchedule.volume} 
+                                                    onChange={(e) => setEditingSchedule({...editingSchedule, volume: parseFloat(e.target.value)})}
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                                                />
+                                                <button 
+                                                    onClick={() => setEditingSchedule({...editingSchedule, volume: 1})} 
+                                                    className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition flex-shrink-0"
+                                                    title="音量を100%に戻す"
+                                                >
+                                                    リセット
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {/* 曜日 or 日付 */}
+                                        {editingSchedule.scheduleType === 'weekly' ? (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">曜日</label>
+                                                <div className="flex justify-between gap-1">
+                                                    {DAYS_OF_WEEK.map((day) => (
+                                                        <button
+                                                            key={day.id}
+                                                            onClick={() => {
+                                                                const currentDays = editingSchedule.days || [];
+                                                                const newDays = currentDays.includes(day.id)
+                                                                    ? currentDays.filter(d => d !== day.id)
+                                                                    : [...currentDays, day.id].sort();
+                                                                setEditingSchedule({...editingSchedule, days: newDays});
+                                                            }}
+                                                            className={`
+                                                                w-10 h-10 rounded-full text-sm font-bold flex items-center justify-center transition-colors
+                                                                ${(editingSchedule.days || []).includes(day.id) 
+                                                                    ? 'bg-indigo-600 text-white' 
+                                                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-300 hover:border-indigo-400'}
+                                                            `}
+                                                            title={`${day.label}曜日`}
+                                                        >
+                                                            {day.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">日付</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><IconCalendar className="w-4 h-4 text-gray-400" /></div>
+                                                    <input 
+                                                        type="date" 
+                                                        value={editingSchedule.specificDate} 
+                                                        onChange={(e) => setEditingSchedule({...editingSchedule, specificDate: e.target.value})}
+                                                        className="w-full pl-10 p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded font-mono" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-700 flex justify-end gap-2 rounded-b-lg">
+                                        <button 
+                                            onClick={closeEditModal}
+                                            className="px-4 py-2 rounded text-gray-700 bg-gray-200 hover:bg-gray-300 dark:text-gray-200 dark:bg-gray-600 dark:hover:bg-gray-500 transition"
+                                        >
+                                            キャンセル
+                                        </button>
+                                        <button 
+                                            onClick={updateSchedule}
+                                            className="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                                        >
+                                            保存
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
