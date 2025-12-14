@@ -38,6 +38,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // デフォルトチャイム音源URL
+        const DEFAULT_CHIME_URL = "https://github.com/AfterEffects-OK/SchoolChime/raw/refs/heads/main/Japanese_School_Bell02-01(-16dB).mp3";
+
         // 曜日の定義
         const DAYS_OF_WEEK = [
             { id: 0, label: '日', color: 'text-red-500' },
@@ -149,13 +152,14 @@
 
                 {/* 音源ステータス */}
                 <div className="flex items-center space-x-3 p-3 rounded-lg border dark:border-gray-700 shadow-sm">
-                    <div className={`p-2 rounded-full ${audioFile ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300'}`}>
+                    <div className={`p-2 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300`}>
                         <IconMusic />
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">音源ファイル</p>
                         <p className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                            {audioFile ? audioFile.name : '未設定'}
+                            {/* audioFileがセットされていればそのファイル名、そうでなければデフォルト音源名を表示 */}
+                            {audioFile ? audioFile.name : 'デフォルトチャイム音源'}
                         </p>
                     </div>
                 </div>
@@ -186,8 +190,10 @@
         const App = () => {
             // ステート管理
             const [currentTime, setCurrentTime] = useState(new Date());
-            const [audioFile, setAudioFile] = useState(null);
-            const [audioSrc, setAudioSrc] = useState(null);
+            // audioFileはアップロードされたファイルオブジェクトを保持 (デフォルト音源の場合はnull)
+            const [audioFile, setAudioFile] = useState(null); 
+            // audioSrcは再生に使用するURLを保持 (デフォルトURLで初期化)
+            const [audioSrc, setAudioSrc] = useState(DEFAULT_CHIME_URL); 
             const [schedules, setSchedules] = useState([]);
             const [isPlaying, setIsPlaying] = useState(false);
             const [lastPlayedTime, setLastPlayedTime] = useState(null); // 重複再生防止用
@@ -255,8 +261,8 @@
 
             // アラームチェックロジック
             const checkAlarm = (now) => {
-                // 音声ファイルがセットされていない場合は何もしない
-                if (!audioRef.current || !audioSrc) return;
+                // 音声ファイルがセットされていない場合は何もしない (audioSrcはデフォルトでセットされているため、ここではaudioRefの準備のみチェック)
+                if (!audioRef.current) return;
 
                 const currentHour = now.getHours();
                 const currentMinute = now.getMinutes();
@@ -350,13 +356,15 @@
 
             // チャイム再生
             const playChime = (scheduleName) => {
-                if (audioRef.current) {
-                    console.log(`チャイム再生: ${scheduleName}`);
+                if (audioRef.current && audioSrc) {
+                    console.log(`チャイム再生: ${scheduleName} from ${audioSrc}`);
                     audioRef.current.currentTime = 0;
                     audioRef.current.play()
                         // カスタムモーダルを使うべきだが、今回はalertで代用
                         .then(() => setIsPlaying(true))
                         .catch(err => alert(`再生エラー: ブラウザの自動再生ポリシーによりブロックされた可能性があります。一度画面をクリックしてください。\n(${err})`));
+                } else {
+                    alert('チャイム音源が設定されていません。');
                 }
             };
 
@@ -365,8 +373,13 @@
                 const file = e.target.files[0];
                 if (file) {
                     setAudioFile(file);
+                    // アップロードされたファイルのURLを使用
                     const url = URL.createObjectURL(file);
                     setAudioSrc(url);
+                } else {
+                    // ファイル選択がキャンセルされた場合、デフォルト音源に戻す
+                    setAudioFile(null);
+                    setAudioSrc(DEFAULT_CHIME_URL);
                 }
             };
 
@@ -396,6 +409,7 @@
 
             // スケジュール削除
             const deleteSchedule = (id) => {
+                // カスタムモーダルを使うべき
                 if (confirm('このスケジュールを削除しますか？')) {
                     setSchedules(schedules.filter(s => s.id !== id));
                 }
@@ -465,7 +479,7 @@
                                 <div className="lg:w-1/2 p-4 pt-8 lg:pt-0">
                                     <StatusPanel 
                                         isPlaying={isPlaying} 
-                                        audioFile={audioFile} 
+                                        audioFile={audioFile} // デフォルト音源の場合はnull
                                         nextChimeData={nextChimeData} 
                                     />
                                 </div>
@@ -479,21 +493,34 @@
                                 ステップ 1: チャイム音の設定
                             </h2>
                             
-                            <div className="bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 mb-4 text-sm text-yellow-800 dark:text-yellow-200">
-                                <strong>注意:</strong> スケジュール設定は保存されますが、ブラウザを更新（リロード）すると、セキュリティ上の理由により<strong>設定した音声ファイル自体はリセットされます</strong>。<br/>
-                                使用する際は、毎回音声ファイルをアップロードしてください。
-                            </div>
+                            {/* デフォルト音源使用中の注意 */}
+                            {!audioFile && (
+                                <div className="bg-indigo-50 dark:bg-indigo-950 border-l-4 border-indigo-400 dark:border-indigo-600 p-4 mb-4 text-sm text-indigo-800 dark:text-indigo-200">
+                                    <strong>デフォルト音源を使用中:</strong> {DEFAULT_CHIME_URL.split('/').pop()}が自動でロードされています。
+                                </div>
+                            )}
+
+                            {/* アップロード時の注意 */}
+                            {audioFile && (
+                                <div className="bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 mb-4 text-sm text-yellow-800 dark:text-yellow-200">
+                                    <strong>注意:</strong> スケジュール設定は保存されますが、ブラウザを更新（リロード）すると、セキュリティ上の理由により<strong>アップロードした音声ファイルはリセットされ、デフォルト音源に戻ります</strong>。
+                                </div>
+                            )}
 
                             <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                                 <label className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg cursor-pointer transition">
                                     <IconUpload />
-                                    <span>音声ファイルを選択</span>
+                                    <span>独自の音声ファイルを選択</span>
+                                    {/* ユーザーがファイルをアップロードした際、audioFileとaudioSrcが更新されます */}
                                     <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
                                 </label>
                                 
-                                {audioFile && (
+                                {/* audioSrcが存在すれば、Audioタグを表示 */}
+                                {audioSrc && (
                                     <div className="flex-1 w-full md:w-auto">
-                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">選択中: {audioFile.name}</div>
+                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {audioFile ? `選択中: ${audioFile.name}` : `デフォルト音源を再生`}
+                                        </div>
                                         <audio 
                                             ref={audioRef} 
                                             src={audioSrc} 
@@ -504,10 +531,6 @@
                                             onEnded={() => setIsPlaying(false)}
                                         />
                                     </div>
-                                )}
-                                
-                                {!audioFile && (
-                                    <div className="text-gray-400 dark:text-gray-500 text-sm">ファイルが選択されていません (mp3, wavなど)</div>
                                 )}
                             </div>
                         </div>
@@ -562,14 +585,10 @@
                                 <div className="md:col-span-12 mt-2">
                                     <button 
                                         onClick={addSchedule}
-                                        disabled={!audioFile}
-                                        className={`w-full py-2 px-4 rounded-lg font-bold text-white transition
-                                            ${audioFile 
-                                                ? 'bg-green-600 hover:bg-green-700 shadow-sm' 
-                                                : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'}
-                                        `}
+                                        // デフォルト音源が設定されているため、無効化の条件を削除
+                                        className={`w-full py-2 px-4 rounded-lg font-bold text-white transition bg-green-600 hover:bg-green-700 shadow-sm`}
                                     >
-                                        {audioFile ? '+ スケジュールに追加' : '先に音声ファイルを選択してください'}
+                                        + スケジュールに追加
                                     </button>
                                 </div>
                             </div>
@@ -642,7 +661,6 @@
                                                 {/* 手動テスト再生ボタン */}
                                                 <button 
                                                     onClick={() => playChime(schedule.name + '(テスト)')}
-                                                    disabled={!audioFile}
                                                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition dark:text-indigo-400 dark:hover:bg-indigo-900"
                                                     title="テスト再生"
                                                 >
