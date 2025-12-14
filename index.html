@@ -221,6 +221,11 @@
             const [newSpecificDate, setNewSpecificDate] = useState(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
             const [newVolume, setNewVolume] = useState(1); // 新規スケジュール用の音量
 
+            // 個別再生用のステート
+            const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null); // 再生中の音源ID
+            const [audioDurations, setAudioDurations] = useState({}); // { id: duration }
+            const [audioCurrentTimes, setAudioCurrentTimes] = useState({}); // { id: currentTime }
+
             const audioRef = useRef(null);
             const importInputRef = useRef(null); // インポート用ファイル入力参照
             const fileInputRef = useRef(null); // 音源アップロード用
@@ -412,6 +417,67 @@
                 const sourceToDelete = audioSources.find(s => s.id === idToDelete);
                 if (sourceToDelete && sourceToDelete.url.startsWith('blob:')) URL.revokeObjectURL(sourceToDelete.url);
                 setAudioSources(prev => prev.filter(s => s.id !== idToDelete));
+            };
+
+            // 個別再生/一時停止のトグル
+            const toggleAudioPlayback = (source) => {
+                if (currentlyPlayingId === source.id) {
+                    // 再生中なので一時停止
+                    audioRef.current.pause();
+                    setCurrentlyPlayingId(null);
+                } else {
+                    // 別の音源を再生
+                    setCurrentlyPlayingId(source.id);
+                    audioRef.current.src = source.url;
+                    audioRef.current.play().catch(e => console.error("Playback failed:", e));
+                }
+            };
+
+            // audio要素のイベントハンドラ
+            const onAudioPlay = () => {
+                setIsPlaying(true);
+            };
+            const onAudioPauseOrEnd = () => {
+                setIsPlaying(false);
+                setCurrentlyPlayingId(null);
+            };
+            const onAudioTimeUpdate = () => {
+                if (!currentlyPlayingId) return;
+                setAudioCurrentTimes(prev => ({
+                    ...prev,
+                    [currentlyPlayingId]: audioRef.current.currentTime
+                }));
+            };
+            const onAudioLoadedMetadata = (e, sourceId) => {
+                // Blob URLの場合はメインのaudio要素でdurationを取得
+                if (e.target.src.startsWith('blob:')) {
+                    setAudioDurations(prev => ({
+                        ...prev,
+                        [sourceId]: e.target.duration
+                    }));
+                }
+            };
+            
+            // デフォルト音源のdurationを取得するためのuseEffect
+            useEffect(() => {
+                const audio = new Audio(DEFAULT_CHIME_URL);
+                const handleMetadata = () => {
+                    setAudioDurations(prev => ({ ...prev, 'default': audio.duration }));
+                    audio.removeEventListener('loadedmetadata', handleMetadata);
+                };
+                audio.addEventListener('loadedmetadata', handleMetadata);
+                return () => {
+                    audio.removeEventListener('loadedmetadata', handleMetadata);
+                };
+            }, []);
+
+            // 時間を mm:ss 形式にフォーマット
+            const formatTime = (seconds) => {
+                if (isNaN(seconds) || seconds === Infinity) return '00:00';
+                const floorSeconds = Math.floor(seconds);
+                const min = Math.floor(floorSeconds / 60);
+                const sec = floorSeconds % 60;
+                return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
             };
 
             // スケジュール追加
@@ -650,35 +716,48 @@
                                     <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
                                 </label>
                                 
-                                <div className="flex-1 w-full space-y-2">
+                                <div className="flex-1 w-full space-y-2 overflow-hidden">
                                     {audioSources.map(source => (
-                                        <div key={source.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
-                                            <p className="text-sm text-gray-800 dark:text-gray-200 truncate" title={source.name}>
-                                                <IconMusic className="inline-block mr-2 w-4 h-4" />
-                                                {source.name}
-                                            </p>
+                                        <div key={source.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                                            <button onClick={() => toggleAudioPlayback(source)} className="p-2 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900">
+                                                {currentlyPlayingId === source.id ? <IconPause /> : <IconPlay />}
+                                            </button>
+                                            <div className="flex-1 truncate">
+                                                <p className="text-sm text-gray-800 dark:text-gray-200 truncate" title={source.name}>
+                                                    {source.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                                    {formatTime(audioCurrentTimes[source.id] || 0)} / {formatTime(audioDurations[source.id] || 0)}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center">
+                                                {source.id !== 'default' && (
+                                                    <button 
+                                                        onClick={() => deleteAudioSource(source.id)}
+                                                        className="p-2 text-gray-400 hover:text-red-500 rounded-full"
+                                                        title="この音源を削除"
+                                                    >
+                                                        <IconTrash />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {/* 各カスタム音源のdurationを取得するための非表示audio要素 */}
                                             {source.id !== 'default' && (
-                                                <button 
-                                                    onClick={() => deleteAudioSource(source.id)}
-                                                    className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-                                                    title="この音源を削除"
-                                                >
-                                                    <IconTrash />
-                                                </button>
+                                                <audio src={source.url} onLoadedMetadata={(e) => onAudioLoadedMetadata(e, source.id)} className="hidden"></audio>
                                             )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             
-                            <audio 
+                            {/* 汎用再生用の非表示audio要素 */}
+                            <audio
                                 ref={audioRef} 
-                                src={initialAudioSrc}
-                                className="w-full h-10 mt-4"
-                                controls
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                                onEnded={() => setIsPlaying(false)}
+                                onPlay={onAudioPlay}
+                                onPause={onAudioPauseOrEnd}
+                                onEnded={onAudioPauseOrEnd}
+                                onTimeUpdate={onAudioTimeUpdate}
+                                className="hidden"
                             />
                         </div>
 
