@@ -70,6 +70,9 @@
         const IconCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
         const IconAlertTriangle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>;
         const IconHelpCircle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>;
+        const IconSpeaker = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><circle cx="12" cy="14" r="4"/><line x1="12" x2="12.01" y1="6" y2="6"/></svg>;
+        const IconMic = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>;
+        const IconSettings2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>;
         
         // 【再修正】インポート用アイコン（ダウンロード）
         const IconImport = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
@@ -243,6 +246,7 @@
             const [newSpecificDate, setNewSpecificDate] = useState(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
             const [newVolume, setNewVolume] = useState(1); // 新規スケジュール用の音量
 
+            const [newSinkId, setNewSinkId] = useState('default'); // 新規スケジュール用の出力デバイスID
             // 個別再生用のステート
             const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null); // 再生中の音源ID
             const [audioDurations, setAudioDurations] = useState({}); // { id: duration }
@@ -251,6 +255,15 @@
             // URL追加用のステート
             const [newAudioUrl, setNewAudioUrl] = useState('');
             const [newAudioName, setNewAudioName] = useState('');
+
+            // 音声出力デバイス関連のステート
+            const [audioDevices, setAudioDevices] = useState([]);
+            const [selectedSinkId, setSelectedSinkId] = useState('default');
+            const [isSetSinkIdSupported, setIsSetSinkIdSupported] = useState(false);
+            const [audioInputDevices, setAudioInputDevices] = useState([]);
+            const [selectedInputDeviceId, setSelectedInputDeviceId] = useState('default');
+            const [micPermissionError, setMicPermissionError] = useState(null);
+
 
             const audioRef = useRef(null);
             const importInputRef = useRef(null); // インポート用ファイル入力参照
@@ -279,6 +292,71 @@
                 }
                 localStorage.setItem('schoolChimeDarkMode', JSON.stringify(isDarkMode));
             }, [isDarkMode]);
+
+            // setSinkId のサポート状況を確認
+            useEffect(() => {
+                if ('setSinkId' in HTMLAudioElement.prototype) {
+                    setIsSetSinkIdSupported(true);
+                }
+            }, []);
+
+            // 音声出力デバイスのリストを取得・監視
+            useEffect(() => {
+                const getDevices = async () => {
+                    try {
+                        // マイクへのアクセス許可を求めることで、より詳細なデバイスリストを取得できる場合がある
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: selectedInputDeviceId === 'default' ? undefined : { exact: selectedInputDeviceId } } });
+                        // 許可が得られたらすぐにストリームを停止する（マイクを占有し続けないため）
+                        stream.getTracks().forEach(track => track.stop());
+                    } catch (err) {
+                        console.warn('マイクへのアクセスが拒否されたため、デバイスラベルが取得できない可能性があります。', err);
+                    }
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+                        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
+                        if (isSetSinkIdSupported) setAudioDevices(audioOutputDevices);
+                        setAudioInputDevices(audioInputDevices);
+                    } catch (err) {
+                        console.error('音声デバイスの取得に失敗しました。', err);
+                    }
+                };
+
+                getDevices();
+                navigator.mediaDevices.addEventListener('devicechange', getDevices);
+
+                return () => {
+                    navigator.mediaDevices.removeEventListener('devicechange', getDevices);
+                };
+            }, [isSetSinkIdSupported, selectedInputDeviceId]);
+
+            // 選択された出力デバイスを永続化
+            useEffect(() => {
+                const savedSinkId = localStorage.getItem('schoolChimeSinkId');
+                if (savedSinkId) {
+                    setSelectedSinkId(savedSinkId);
+                }
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('schoolChimeSinkId', selectedSinkId);
+                if (audioRef.current && isSetSinkIdSupported) {
+                    audioRef.current.setSinkId(selectedSinkId).catch(err => console.error('出力先の変更に失敗:', err));
+                }
+            }, [selectedSinkId, isSetSinkIdSupported]);
+
+            // 選択された入力デバイスを永続化
+            useEffect(() => {
+                const savedInputDeviceId = localStorage.getItem('schoolChimeInputDeviceId');
+                if (savedInputDeviceId) {
+                    setSelectedInputDeviceId(savedInputDeviceId);
+                }
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('schoolChimeInputDeviceId', selectedInputDeviceId);
+                // 実際のマイク使用は getDevices 内で行われる
+            }, [selectedInputDeviceId]);
 
 
             // ローカルストレージから音源を読み込み
@@ -423,13 +501,24 @@
 
             // チャイム再生
             const playChime = (schedule) => {
+                if (!audioRef.current) return;
+
                 const audioIdToPlay = schedule.audioId || 'default';
                 const sourceToPlay = audioSources.find(s => s.id === audioIdToPlay) || audioSources[0];
                 
-                if (audioRef.current && sourceToPlay) {
+                if (sourceToPlay) {
                     console.log(`チャイム再生: ${schedule.name} (${sourceToPlay.name})`);
+                    
+                    // 出力デバイスの決定: スケジュール固有の設定 -> 全体設定 の順で優先
+                    const targetSinkId = (schedule.sinkId && schedule.sinkId !== 'default') ? schedule.sinkId : selectedSinkId;
+
+                    // 出力先を設定
+                    if (isSetSinkIdSupported && audioRef.current.sinkId !== targetSinkId) {
+                        audioRef.current.setSinkId(targetSinkId).catch(err => console.error(`出力先の変更に失敗: ${targetSinkId}`, err));
+                    }
+
                     // スケジュールに設定された音量を適用（未設定なら100%）
-                    audioRef.current.volume = schedule.volume ?? 1;
+                    audioRef.current.volume = schedule.volume ?? 1; // 150%まで許容
                     // 再生ソースを動的に設定
                     audioRef.current.src = sourceToPlay.url;
                     audioRef.current.currentTime = 0;
@@ -608,6 +697,7 @@
                     audioId: newAudioId,
                     volume: newVolume,
                     scheduleType: newScheduleType,
+                    sinkId: newSinkId, // 出力デバイスIDを追加
                     // タイプに応じてデータを格納
                     days: newScheduleType === 'weekly' ? newDays : [],
                     specificDate: newScheduleType === 'date' ? newSpecificDate : '',
@@ -622,6 +712,7 @@
                 // setNewScheduleType('weekly');
                 // setNewSpecificDate(new Date().toISOString().slice(0, 10));
                 setNewVolume(1);
+                setNewSinkId('default');
                 // 時間と曜日はリセットせず、連続入力をしやすくする
             };
 
@@ -674,6 +765,7 @@
                     volume: schedule.volume ?? 1,
                     scheduleType: schedule.scheduleType || 'weekly', // 下位互換性
                     specificDate: schedule.specificDate || new Date().toISOString().slice(0, 10),
+                    sinkId: schedule.sinkId || 'default', // 下位互換性
                 });
             };
 
@@ -840,6 +932,57 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* 全体設定エリア */}
+                        {(isSetSinkIdSupported && audioDevices.length > 0) || audioInputDevices.length > 0 ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                    <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconSettings2 /></span>
+                                    全体デバイス設定
+                                </h2>
+                                {micPermissionError && (
+                                    <div className="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm flex items-center gap-2">
+                                        <IconAlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                        <div>
+                                            <span className="font-bold">デバイス名が正しく表示されません:</span> {micPermissionError}
+                                            <p className="text-xs mt-1">ブラウザのアドレスバーの左にあるアイコンをクリックし、マイクのアクセスを許可してからページを再読み込みしてください。</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* 入力デバイス設定 */}
+                                    {audioInputDevices.length > 0 && (
+                                        <div>
+                                            <label htmlFor="audio-input-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconMic className="w-4 h-4" />入力デバイス (マイク)</label>
+                                            <select 
+                                                id="audio-input-select"
+                                                value={selectedInputDeviceId} 
+                                                onChange={(e) => setSelectedInputDeviceId(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                                            >
+                                                <option value="default">システム標準</option>
+                                                {audioInputDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `マイク ${device.deviceId.substring(0, 8)}`}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    {/* 出力デバイス設定 */}
+                                    {isSetSinkIdSupported && audioDevices.length > 0 && (
+                                        <div>
+                                            <label htmlFor="audio-output-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconSpeaker className="w-4 h-4" />出力デバイス (スピーカー)</label>
+                                            <select 
+                                                id="audio-output-select"
+                                                value={selectedSinkId} 
+                                                onChange={(e) => setSelectedSinkId(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                                            >
+                                                <option value="default">システム標準</option>
+                                                {audioDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : null}
 
                         {/* 音声ファイル設定エリア */}
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
@@ -934,7 +1077,7 @@
                                 <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconClock /></span>
                                 ステップ 2: スケジュール追加
                             </h2>
-
+                            {/* 修正: grid-cols-12 に変更 */}
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                                 <div className="md:col-span-4">
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名前 (例: 朝の会)</label>
@@ -967,7 +1110,7 @@
                                         ))}
                                     </select>
                                 </div>
-                                <div className="md:col-span-5 w-full">
+                                <div className="md:col-span-3 w-full">
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">タイプ</label>
                                     <div className="flex rounded-md shadow-sm">
                                         <button onClick={() => setNewScheduleType('weekly')} className={`px-4 py-2 text-sm font-medium rounded-l-md flex-1 transition ${newScheduleType === 'weekly' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'}`}>毎週</button>
@@ -976,7 +1119,7 @@
                                 </div>
 
                                 {newScheduleType === 'weekly' ? (
-                                    <div className="md:col-span-7 w-full">
+                                    <div className="md:col-span-4 w-full">
                                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">曜日</label>
                                         <div className="flex justify-between gap-1">
                                             {DAYS_OF_WEEK.map((day) => (
@@ -997,7 +1140,7 @@
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="md:col-span-7 w-full">
+                                    <div className="md:col-span-4 w-full">
                                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日付</label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1013,7 +1156,25 @@
                                     </div>
                                 )}
 
-                                <div className="md:col-span-5 w-full">
+                                {isSetSinkIdSupported && audioDevices.length > 0 && (
+                                    <div className="md:col-span-4">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">出力デバイス</label>
+                                        <select 
+                                            value={newSinkId} 
+                                            onChange={(e) => setNewSinkId(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                                        >
+                                            <option value="default">全体設定に従う</option>
+                                            {audioDevices.map(device => (
+                                                <option key={device.deviceId} value={device.deviceId}>
+                                                    {device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="md:col-span-4 w-full">
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">音量: {Math.round(newVolume * 100)}%</label>
                                     <div className="flex items-center gap-3">
                                         <IconVolume2 className="w-5 h-5 text-gray-500 dark:text-gray-300" />
@@ -1091,8 +1252,16 @@
                                                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                     <span className="truncate flex items-center gap-1"><IconMusic className="w-3 h-3" />{(audioSources.find(s => s.id === schedule.audioId) || {name: '未設定'}).name}</span>
                                                     <span className="flex-shrink-0">|</span>
+                                                    {isSetSinkIdSupported && (
+                                                        <span className="flex items-center gap-1" title={`出力先: ${(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定に従う'}).label}`}>
+                                                            <IconSpeaker className="w-3 h-3" />
+                                                            <span className="truncate max-w-[100px]">
+                                                                {(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定'}).label}
+                                                            </span>
+                                                        </span>
+                                                    )}
                                                     {(schedule.scheduleType || 'weekly') === 'weekly' ? (
-                                                        <div className="flex gap-1">
+                                                        <div className="flex gap-1 ml-2">
                                                             {DAYS_OF_WEEK.map(day => (
                                                                 <span key={day.id} className={`font-bold w-4 h-4 flex items-center justify-center rounded-full ${schedule.days.includes(day.id) ? (day.color) : 'text-gray-300 dark:text-gray-600'}`}>{day.label}</span>
                                                             ))}
@@ -1150,6 +1319,24 @@
                                                 ))}
                                             </select>
                                         </div>
+                                        {/* 出力デバイス */}
+                                        {isSetSinkIdSupported && audioDevices.length > 0 && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">出力デバイス</label>
+                                                <select 
+                                                    value={editingSchedule.sinkId || 'default'} 
+                                                    onChange={(e) => setEditingSchedule({...editingSchedule, sinkId: e.target.value})}
+                                                    className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded"
+                                                >
+                                                    <option value="default">全体設定に従う</option>
+                                                    {audioDevices.map(device => (
+                                                        <option key={device.deviceId} value={device.deviceId}>
+                                                            {device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                         {/* タイプ */}
                                         <div>
                                             <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">タイプ</label>
