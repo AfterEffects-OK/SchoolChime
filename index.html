@@ -66,6 +66,7 @@
         const IconMoon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
         const IconEdit = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
         const IconVolume2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>;
+        const IconCopy = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
         const IconCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
         const IconAlertTriangle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>;
         const IconHelpCircle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>;
@@ -145,18 +146,28 @@
         };
         
         // ステータスパネルコンポーネント
-        const StatusPanel = ({ isPlaying, audioSources, nextChimeData }) => (
+        const StatusPanel = ({ isPlaying, playError, audioSources, nextChimeData }) => (
             <div className="space-y-4">
                 <h3 className="text-xl font-extrabold text-indigo-700 dark:text-indigo-400 border-b-2 border-indigo-100 dark:border-indigo-900 pb-1">システムステータス</h3>
 
                 {/* 再生ステータス */}
-                <div className="flex items-center space-x-3 p-3 rounded-lg border dark:border-gray-700 shadow-sm">
-                    <div className={`p-2 rounded-full ${isPlaying ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300 animate-pulse' : 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300'}`}>
-                        {isPlaying ? <IconPlay /> : <IconCheck />}
+                <div className={`
+                    flex items-center space-x-3 p-3 rounded-lg border shadow-sm transition-colors
+                    ${playError ? 'bg-yellow-100 dark:bg-yellow-900/50 border-yellow-300 dark:border-yellow-700' : 
+                      isPlaying ? 'bg-red-100 dark:bg-red-900/50 border-red-300 dark:border-red-700' : 
+                      'bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-700'}
+                `}>
+                    <div className={`p-2 rounded-full ${
+                        playError ? 'bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200' :
+                        isPlaying ? 'bg-red-200 text-red-700 dark:bg-red-800 dark:text-red-200 animate-pulse' : 
+                        'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-200'
+                    }`}>
+                        {playError ? <IconAlertTriangle className="w-5 h-5" /> : isPlaying ? <IconPlay /> : <IconCheck />}
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">現在の状態</p>
-                        <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{isPlaying ? 'チャイム再生中...' : '待機中'}</p>
+                        <p className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                            {playError ? '再生エラー' : isPlaying ? 'チャイム再生中...' : '待機中'}</p>
                     </div>
                 </div>
 
@@ -188,7 +199,13 @@
                             <p className="text-3xl font-mono font-bold text-indigo-800 dark:text-indigo-200">{nextChimeData.schedule.time}</p>
                             <div className="text-right">
                                 <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{nextChimeData.dayLabel}</p>
-                                <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{nextChimeData.schedule.name}</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate max-w-xs" title={nextChimeData.schedule.name}>{nextChimeData.schedule.name}</p>
+                                <p className="flex items-center justify-end text-xs text-gray-500 dark:text-gray-400 max-w-xs" title={(audioSources.find(a => a.id === nextChimeData.schedule.audioId) || {name: '未設定'}).name}>
+                                    <IconMusic className="w-3 h-3 mr-1 flex-shrink-0" />
+                                    <span className="truncate">
+                                        {(audioSources.find(a => a.id === nextChimeData.schedule.audioId) || {name: '未設定'}).name}
+                                    </span>
+                                </p>
                             </div>
                         </div>
                     ) : (
@@ -210,6 +227,7 @@
             const [schedules, setSchedules] = useState([]);
             const [isPlaying, setIsPlaying] = useState(false);
             const [lastPlayedTime, setLastPlayedTime] = useState(null); // 重複再生防止用
+            const [playError, setPlayError] = useState(null); // 再生エラーの状態
             
             // 編集モーダル管理
             const [editingSchedule, setEditingSchedule] = useState(null); // 編集対象のスケジュールオブジェクト
@@ -417,8 +435,11 @@
                     audioRef.current.currentTime = 0;
                     audioRef.current.play()
                         // カスタムモーダルを使うべきだが、今回はalertで代用
-                        .then(() => setIsPlaying(true))
-                        .catch(err => alert(`再生エラー: ブラウザの自動再生ポリシーによりブロックされた可能性があります。一度画面をクリックしてください。\n(${err})`));
+                        .then(() => {
+                            setIsPlaying(true);
+                            setPlayError(null); // 再生成功時にエラーをクリア
+                        })
+                        .catch(err => setPlayError(err));
                 } else {
                     alert(`音源が見つかりません: ${schedule.name} (ID: ${audioIdToPlay})`);
                 }
@@ -519,6 +540,7 @@
             // audio要素のイベントハンドラ
             const onAudioPlay = () => {
                 setIsPlaying(true);
+                setPlayError(null); // 再生開始時にエラーをクリア
             };
             const onAudioPauseOrEnd = () => {
                 setIsPlaying(false);
@@ -609,6 +631,24 @@
                 if (confirm('このスケジュールを削除しますか？')) {
                     setSchedules(schedules.filter(s => s.id !== id));
                 }
+            };
+            
+            // スケジュール複製
+            const duplicateSchedule = (id) => {
+                const scheduleToCopy = schedules.find(s => s.id === id);
+                if (!scheduleToCopy) return;
+
+                const newSchedule = {
+                    ...scheduleToCopy,
+                    id: Date.now(),
+                    name: `${scheduleToCopy.name} (コピー)`,
+                };
+
+                // 元のスケジュールの直後に追加
+                const index = schedules.findIndex(s => s.id === id);
+                const newSchedules = [...schedules];
+                newSchedules.splice(index + 1, 0, newSchedule);
+                setSchedules(newSchedules);
             };
 
             // スケジュール有効/無効切り替え
@@ -793,6 +833,7 @@
                                 <div className="lg:w-1/2 p-4 pt-8 lg:pt-0">
                                     <StatusPanel 
                                         isPlaying={isPlaying} 
+                                        playError={playError}
                                         audioSources={audioSources}
                                         nextChimeData={nextChimeData} 
                                     />
@@ -1071,6 +1112,7 @@
                                             {/* 操作ボタン */}
                                             <div className="flex items-center">
                                                 <button onClick={() => playChime(schedule)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition dark:text-indigo-400 dark:hover:bg-indigo-900" title="テスト再生"><IconPlay /></button>
+                                                <button onClick={() => duplicateSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="コピー"><IconCopy /></button>
                                                 <button onClick={() => openEditModal(schedule)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="編集"><IconEdit /></button>
                                                 <button onClick={() => deleteSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-red-100 rounded-full transition dark:text-gray-400 dark:hover:bg-red-900" title="削除"><IconTrash /></button>
                                             </div>
