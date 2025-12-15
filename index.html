@@ -67,6 +67,7 @@
         const IconEdit = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
         const IconVolume2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>;
         const IconCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
+        const IconAlertTriangle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>;
         
         // 【再修正】インポート用アイコン（ダウンロード）
         const IconImport = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
@@ -203,7 +204,7 @@
             const [currentTime, setCurrentTime] = useState(new Date());
             // 音源リストを管理。デフォルト音源を初期値として設定
             const [audioSources, setAudioSources] = useState([
-                { id: 'default', name: 'デフォルトチャイム音源', url: DEFAULT_CHIME_URL }
+                { id: 'default', name: 'スクールチャイム（デフォルト）', url: DEFAULT_CHIME_URL }
             ]);
             const [schedules, setSchedules] = useState([]);
             const [isPlaying, setIsPlaying] = useState(false);
@@ -211,6 +212,7 @@
             
             // 編集モーダル管理
             const [editingSchedule, setEditingSchedule] = useState(null); // 編集対象のスケジュールオブジェクト
+            const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
 
             // 新規スケジュール入力用
             const [newName, setNewName] = useState('');
@@ -225,6 +227,10 @@
             const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null); // 再生中の音源ID
             const [audioDurations, setAudioDurations] = useState({}); // { id: duration }
             const [audioCurrentTimes, setAudioCurrentTimes] = useState({}); // { id: currentTime }
+
+            // URL追加用のステート
+            const [newAudioUrl, setNewAudioUrl] = useState('');
+            const [newAudioName, setNewAudioName] = useState('');
 
             const audioRef = useRef(null);
             const importInputRef = useRef(null); // インポート用ファイル入力参照
@@ -253,6 +259,26 @@
                 }
                 localStorage.setItem('schoolChimeDarkMode', JSON.stringify(isDarkMode));
             }, [isDarkMode]);
+
+
+            // ローカルストレージから音源を読み込み
+            useEffect(() => {
+                const savedAudioSources = localStorage.getItem('schoolChimeAudioSources');
+                if (savedAudioSources) {
+                    try {
+                        // URLで追加された音源のみ永続化
+                        setAudioSources(JSON.parse(savedAudioSources));
+                    } catch (e) {
+                        console.error("保存された音源の読み込みに失敗しました", e);
+                    }
+                }
+            }, []);
+
+            // 音源変更時に保存 (blob URLは除外)
+            useEffect(() => {
+                const sourcesToSave = audioSources.filter(s => !s.url.startsWith('blob:'));
+                localStorage.setItem('schoolChimeAudioSources', JSON.stringify(sourcesToSave));
+            }, [audioSources]);
 
 
             // ローカルストレージからスケジュールを読み込み
@@ -419,6 +445,61 @@
                 setAudioSources(prev => prev.filter(s => s.id !== idToDelete));
             };
 
+            // クラウドサービスの共有URLを直接再生可能なURLに変換する
+            const transformCloudUrl = (url) => {
+                try {
+                    // Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+                    let match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                        const fileId = match[1];
+                        console.log("Google Driveのリンクを変換:", fileId);
+                        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    }
+
+                    // Dropbox: https://www.dropbox.com/s/..../file.mp3?dl=0
+                    if (url.includes('dropbox.com/s/')) {
+                        const newUrl = new URL(url);
+                        newUrl.searchParams.set('dl', '1');
+                        console.log("Dropboxのリンクを変換:", newUrl.toString());
+                        return newUrl.toString();
+                    }
+
+                    // OneDrive: https://1drv.ms/u/s!... or https://onedrive.live.com/...
+                    if (url.includes('1drv.ms') || url.includes('onedrive.live.com')) {
+                        // Base64エンコードし、末尾の'='を削除し、URLセーフな文字に置換
+                        const base64Url = btoa(url).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+                        const directUrl = `https://api.onedrive.com/v1.0/shares/u!${base64Url}/root/content`;
+                        console.log("OneDriveのリンクを変換:", directUrl);
+                        return directUrl;
+                    }
+
+                } catch (e) {
+                    console.error("URLの変換に失敗しました:", e);
+                    return url; // エラーが発生した場合は元のURLを返す
+                }
+
+                // 一致するパターンがなければ元のURLを返す
+                return url;
+            };
+
+            // URLから音源を追加
+            const addAudioSourceFromUrl = () => {
+                if (!newAudioUrl || !newAudioName) {
+                    alert('音源のURLと表示名を入力してください。');
+                    return;
+                }
+                const transformedUrl = transformCloudUrl(newAudioUrl);
+                const newSource = {
+                    id: `custom-${Date.now()}`,
+                    name: newAudioName,
+                    url: transformedUrl,
+                    from: 'url' // どこから追加されたかの目印
+                };
+                setAudioSources(prev => [...prev, newSource]);
+                setNewAudioUrl('');
+                setNewAudioName('');
+            };
+
             // 個別再生/一時停止のトグル
             const toggleAudioPlayback = (source) => {
                 if (currentlyPlayingId === source.id) {
@@ -571,6 +652,11 @@
                 closeEditModal();
             };
             
+            // 注意事項モーダル
+            const openWarningModal = () => setIsWarningModalOpen(true);
+            const closeWarningModal = () => setIsWarningModalOpen(false);
+
+
             // スケジュールエクスポート機能
             const handleExport = () => {
                 if (schedules.length === 0) {
@@ -705,18 +791,45 @@
                                 ステップ 1: チャイム音の設定
                             </h2>
                             
-                            <div className="bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 mb-4 text-sm text-yellow-800 dark:text-yellow-200">
-                                <strong>注意:</strong> スケジュール設定は保存されますが、ブラウザを更新（リロード）すると、セキュリティ上の理由により<strong>アップロードした音声ファイルはリセットされます</strong>。
+                            <div className="mb-4">
+                                <button onClick={openWarningModal} className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400 hover:underline">
+                                    <IconAlertTriangle className="w-4 h-4" />
+                                    <span>ファイルアップロードに関する注意</span>
+                                </button>
                             </div>
 
-                            <div className="flex flex-col md:flex-row items-start gap-4">
-                                <label className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg cursor-pointer transition shadow-md">
-                                    <IconUpload />
-                                    <span>音源を追加</span>
-                                    <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
-                                </label>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* 左側: URLから追加 */}
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">URLから追加 (保存可能)</h3>
+                                    <input 
+                                        type="text" 
+                                        placeholder="音声URLまたは共有リンク (Google Drive, Dropbox, OneDrive)" 
+                                        value={newAudioUrl}
+                                        onChange={(e) => setNewAudioUrl(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="表示名" 
+                                        value={newAudioName}
+                                        onChange={(e) => setNewAudioName(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    />
+                                    <button onClick={addAudioSourceFromUrl} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition shadow-md">
+                                        + URLから音源を追加
+                                    </button>
+                                    {/* ファイルからアップロード */}
+                                    <label className="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg cursor-pointer transition shadow-md w-full mt-2">
+                                        <IconUpload />
+                                        <span>ファイルから追加 (一時的)</span>
+                                        <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
+                                    </label>
+                                </div>
                                 
-                                <div className="flex-1 w-full space-y-2 overflow-hidden">
+                                {/* 右側: 音源リスト */}
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">登録済み音源リスト</h3>
                                     {audioSources.map(source => (
                                         <div key={source.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
                                             <button onClick={() => toggleAudioPlayback(source)} className="p-2 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900">
@@ -1096,6 +1209,29 @@
                                             className="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 transition"
                                         >
                                             保存
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 注意事項モーダル */}
+                        {isWarningModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeWarningModal}>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                                    <div className="p-4 border-b dark:border-gray-700 flex items-center justify-between">
+                                        <h3 className="text-lg font-bold text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                                            <IconAlertTriangle />
+                                            <span>注意事項</span>
+                                        </h3>
+                                    </div>
+                                    <div className="p-6 space-y-4 text-gray-700 dark:text-gray-300">
+                                        <p>「ファイルから追加」でアップロードした音声ファイルは、ブラウザのセキュリティ上の仕様により、ページを更新（リロード）するとリセットされます。</p>
+                                        <p>音源設定を永続的に保存したい場合は、「URLから追加」機能をご利用ください。</p>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-700 flex justify-end gap-2 rounded-b-lg">
+                                        <button onClick={closeWarningModal} className="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                                            閉じる
                                         </button>
                                     </div>
                                 </div>
