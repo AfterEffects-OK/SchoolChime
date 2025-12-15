@@ -847,14 +847,6 @@
                                 <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconMusic /></span>
                                 ステップ 1: チャイム音の設定
                             </h2>
-                            
-                            <div className="mb-4">
-                                <button onClick={openWarningModal} className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400 hover:underline">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    <span>ファイルアップロードに関する注意</span>
-                                </button>
-                            </div>
-
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* 左側: URLから追加 */}
                                 <div className="space-y-3">
@@ -882,6 +874,11 @@
                                         <span>ファイルから追加 (一時的)</span>
                                         <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
                                     </label>
+                                    {/* 注意書き */}
+                                    <button onClick={openWarningModal} className="flex items-center justify-center gap-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline pt-1 w-full">
+                                        <IconAlertTriangle className="w-3 h-3" />
+                                        <span>ファイルから追加する場合の注意点</span>
+                                    </button>
                                 </div>
                                 
                                 {/* 右側: 音源リスト */}
