@@ -1464,30 +1464,55 @@
                                         </h3>
                                     </div>
                                     <div className="p-6 space-y-6 text-gray-700 dark:text-gray-300 overflow-y-auto">
+                                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/50 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                                            <h4 className="font-bold text-indigo-700 dark:text-indigo-300">はじめに</h4>
+                                            <p className="text-sm mt-1">このアプリケーションは、ブラウザ上で動作します。チャイムを鳴らすには、このページを開いたままにしておく必要があります。PCがスリープしたり、ブラウザを閉じるとチャイムは鳴りません。</p>
+                                        </div>
                                         <div className="space-y-2">
                                             <h4 className="font-bold text-indigo-600 dark:text-indigo-400">ステップ1: チャイム音の設定</h4>
-                                            <p className="text-sm">まず、チャイムとして鳴らす音源を登録します。音源の登録には2つの方法があります。</p>
+                                            <p className="text-sm">まず、チャイムとして鳴らす音声ファイルを登録します。音源の登録には2つの方法があります。</p>
                                             <ul className="list-disc list-inside space-y-1 text-sm pl-4">
-                                                <li><strong>URLから追加 (推奨):</strong> Web上の音声ファイルURLや、Google Drive, Dropbox, OneDriveの共有リンクを貼り付けて登録します。この方法で追加した音源は、ブラウザを閉じても保存されます。</li>
-                                                <li><strong>ファイルから追加 (一時的):</strong> お使いのPCから音声ファイルを直接アップロードします。この方法で追加した音源は、ページをリロードすると消去されます。</li>
+                                                <li>
+                                                    <strong>URLから追加 (推奨):</strong><br />
+                                                    Web上の音声ファイル(MP3など)のURLや、Google Drive, Dropbox, OneDriveの共有リンクを貼り付けて登録します。この方法で追加した音源は設定がブラウザに保存され、次回以降も利用できます。
+                                                </li>
+                                                <li>
+                                                    <strong>ファイルから追加 (一時的):</strong><br />
+                                                    お使いのPCから音声ファイルを直接アップロードして使用します。手軽ですが、この方法で追加した音源はページを再読み込みすると消えてしまうため、ご注意ください。
+                                                </li>
                                             </ul>
                                         </div>
                                         <div className="space-y-2">
                                             <h4 className="font-bold text-indigo-600 dark:text-indigo-400">ステップ2: スケジュール追加</h4>
-                                            <p className="text-sm">次に、いつ、どの音を鳴らすかを設定します。</p>
+                                            <p className="text-sm">次に、「いつ」「どの音を」「どのように」鳴らすかを設定します。</p>
                                             <ul className="list-disc list-inside space-y-1 text-sm pl-4">
-                                                <li><strong>名前・時間・チャイム音:</strong> スケジュールの名前、鳴らす時刻、ステップ1で登録した音源を選択します。</li>
-                                                <li><strong>タイプ:</strong> 「毎週」を選んで曜日で繰り返すか、「日付指定」を選んで特定の日付に一度だけ鳴らすかを選択します。</li>
-                                                <li><strong>音量:</strong> スケジュールごとに音量を0%〜150%で調整できます。</li>
+                                                <li><strong>名前・時間・チャイム音:</strong> スケジュールの目的（例:「始業チャイム」）、鳴らす時刻、ステップ1で登録した音源をそれぞれ設定します。</li>
+                                                <li><strong>タイプ:</strong> 「毎週」を選ぶと指定した曜日に毎週チャイムが鳴ります。「日付指定」を選ぶと、特定の日付に一度だけ鳴らすことができます（例: 始業式、終業式など）。</li>
+                                                <li><strong>出力デバイス:</strong> 特定のスピーカーから音を出したい場合に設定します。「全体設定に従う」にすると、下で説明する「全体デバイス設定」が適用されます。</li>
+                                                <li><strong>音量:</strong> スケジュールごとに個別の音量を0%〜150%の範囲で細かく調整できます。</li>
                                             </ul>
                                         </div>
                                         <div className="space-y-2">
                                             <h4 className="font-bold text-indigo-600 dark:text-indigo-400">ステップ3: 登録済みスケジュールの管理</h4>
                                             <p className="text-sm">登録したスケジュールは一覧で確認・管理できます。</p>
                                             <ul className="list-disc list-inside space-y-1 text-sm pl-4">
-                                                <li><strong>有効/無効:</strong> 左側のトグルスイッチで、チャイムを一時的に止めることができます。</li>
-                                                <li><strong>操作:</strong> 右側のアイコンから、テスト再生(▶)、編集(✎)、削除(🗑)が可能です。</li>
-                                                <li><strong>データ共有:</strong> 「インポート」「エクスポート」ボタンを使えば、作成したスケジュールをファイルとして保存したり、他のPCで復元したりできます。</li>
+                                                <li><strong>有効/無効スイッチ:</strong> 左側のスイッチで、スケジュールを削除せずに一時的にON/OFFできます。長期休暇中などに便利です。</li>
+                                                <li><strong>操作アイコン:</strong> 右側の各アイコンで、<IconPlay className="inline w-4 h-4" />テスト再生、<IconCopy className="inline w-4 h-4" />複製、<IconEdit className="inline w-4 h-4" />編集、<IconTrash className="inline w-4 h-4" />削除 が行えます。</li>
+                                                <li><strong>インポート/エクスポート:</strong> 作成した全スケジュールを一つのファイルとして書き出し（エクスポート）、別のPCで読み込む（インポート）ことができます。バックアップや、複数環境での設定共有に役立ちます。</li>
+                                            </ul>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-indigo-600 dark:text-indigo-400">補足: 全体デバイス設定</h4>
+                                            <p className="text-sm">スケジュール一覧の上にある「全体デバイス設定」では、アプリケーション全体の基本的な音声出力先（スピーカー）を設定できます。</p>
+                                            <ul className="list-disc list-inside space-y-1 text-sm pl-4">
+                                                <li>PCに複数のスピーカーや仮想オーディオデバイスが接続されている場合、ここから出力先を選択できます。</li>
+                                                <li>
+                                                    この機能を利用するには、ブラウザにマイクへのアクセスを許可する必要があります。<br />
+                                                    <strong>なぜマイクの許可が必要？</strong><br />
+                                                    セキュリティ上の理由から、最近のブラウザはWebサイトがPCに接続されたデバイス（スピーカーやマイク）の詳しい名前を勝手に取得できないように設計されています。
+                                                    しかし、一度ユーザーがマイクの使用を「許可」すると、ブラウザはこのサイトを信頼し、接続されているスピーカーの一覧（名前を含む）を正しく表示できるようになります。<br />
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">※このアプリはスピーカー一覧の取得目的でのみ許可を求めており、マイクの音声を録音・送信することはありません。</span>
+                                                </li>
                                             </ul>
                                         </div>
                                     </div>
