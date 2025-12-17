@@ -74,6 +74,8 @@
         const IconMic = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>;
         const IconSettings2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>;
         
+        const IconLayoutPanelLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>;
+        const IconSlidersHorizontal = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>;
         // 【再修正】インポート用アイコン（ダウンロード）
         const IconImport = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
         
@@ -278,6 +280,12 @@
                 return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             });
             
+            // シンプルモード状態の初期化と永続化
+            const [isSimpleMode, setIsSimpleMode] = useState(() => {
+                const savedMode = localStorage.getItem('schoolChimeSimpleMode');
+                return savedMode ? JSON.parse(savedMode) : false;
+            });
+
             const toggleDarkMode = () => {
                 setIsDarkMode(prev => !prev);
             };
@@ -292,6 +300,11 @@
                 }
                 localStorage.setItem('schoolChimeDarkMode', JSON.stringify(isDarkMode));
             }, [isDarkMode]);
+
+            // シンプルモード設定をlocalStorageに保存
+            useEffect(() => {
+                localStorage.setItem('schoolChimeSimpleMode', JSON.stringify(isSimpleMode));
+            }, [isSimpleMode]);
 
             // setSinkId のサポート状況を確認
             useEffect(() => {
@@ -890,6 +903,14 @@
                                 >
                                     <IconHelpCircle />
                                 </button>
+                                {/* シンプルモードトグルボタン */}
+                                <button 
+                                    onClick={() => setIsSimpleMode(prev => !prev)}
+                                    className="p-2 rounded-full hover:bg-indigo-500 transition-colors"
+                                    title={isSimpleMode ? '設定パネルを表示' : '設定パネルを隠す'}
+                                >
+                                    {isSimpleMode ? <IconLayoutPanelLeft /> : <IconSlidersHorizontal />}
+                                </button>
                                 {/* ダークモードトグルボタン */}
                                 <button 
                                     onClick={toggleDarkMode}
@@ -933,360 +954,363 @@
                             </div>
                         </div>
                         
-                        {/* 全体設定エリア */}
-                        {(isSetSinkIdSupported && audioDevices.length > 0) || audioInputDevices.length > 0 ? (
-                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
-                                    <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconSettings2 /></span>
-                                    全体デバイス設定
-                                </h2>
-                                {micPermissionError && (
-                                    <div className="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm flex items-center gap-2">
-                                        <IconAlertTriangle className="w-5 h-5 flex-shrink-0" />
-                                        <div>
-                                            <span className="font-bold">デバイス名が正しく表示されません:</span> {micPermissionError}
-                                            <p className="text-xs mt-1">ブラウザのアドレスバーの左にあるアイコンをクリックし、マイクのアクセスを許可してからページを再読み込みしてください。</p>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* 入力デバイス設定 */}
-                                    {audioInputDevices.length > 0 && (
-                                        <div>
-                                            <label htmlFor="audio-input-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconMic className="w-4 h-4" />入力デバイス (マイク)</label>
-                                            <select 
-                                                id="audio-input-select"
-                                                value={selectedInputDeviceId} 
-                                                onChange={(e) => setSelectedInputDeviceId(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
-                                            >
-                                                <option value="default">システム標準</option>
-                                                {audioInputDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `マイク ${device.deviceId.substring(0, 8)}`}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-                                    {/* 出力デバイス設定 */}
-                                    {isSetSinkIdSupported && audioDevices.length > 0 && (
-                                        <div>
-                                            <label htmlFor="audio-output-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconSpeaker className="w-4 h-4" />出力デバイス (スピーカー)</label>
-                                            <select 
-                                                id="audio-output-select"
-                                                value={selectedSinkId} 
-                                                onChange={(e) => setSelectedSinkId(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
-                                            >
-                                                <option value="default">システム標準</option>
-                                                {audioDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : null}
-
-                        {/* 音声ファイル設定エリア */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
-                                <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconMusic /></span>
-                                ステップ 1: チャイム音の設定
-                            </h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* 左側: URLから追加 */}
-                                <div className="space-y-3">
-                                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">URLから追加 (保存可能)</h3>
-                                    <input 
-                                        type="text" 
-                                        placeholder="音声URLまたは共有リンク (Google Drive, Dropbox, OneDrive)" 
-                                        value={newAudioUrl}
-                                        onChange={(e) => setNewAudioUrl(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    />
-                                    <input 
-                                        type="text" 
-                                        placeholder="表示名" 
-                                        value={newAudioName}
-                                        onChange={(e) => setNewAudioName(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    />
-                                    <button onClick={addAudioSourceFromUrl} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition shadow-md">
-                                        + URLから音源を追加
-                                    </button>
-                                    {/* ファイルからアップロード */}
-                                    <label className="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg cursor-pointer transition shadow-md w-full mt-2">
-                                        <IconUpload />
-                                        <span>ファイルから追加 (一時的)</span>
-                                        <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
-                                    </label>
-                                    {/* 注意書き */}
-                                    <button onClick={openWarningModal} className="flex items-center justify-center gap-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline pt-1 w-full">
-                                        <IconAlertTriangle className="w-3 h-3" />
-                                        <span>ファイルから追加する場合の注意点</span>
-                                    </button>
-                                </div>
-                                
-                                {/* 右側: 音源リスト */}
-                                <div className="space-y-3">
-                                    <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">登録済み音源リスト</h3>
-                                    {audioSources.map(source => (
-                                        <div key={source.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
-                                            <button onClick={() => toggleAudioPlayback(source)} className="p-2 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900">
-                                                {currentlyPlayingId === source.id ? <IconPause /> : <IconPlay />}
-                                            </button>
-                                            <div className="flex-1 truncate">
-                                                <p className="text-sm text-gray-800 dark:text-gray-200 truncate" title={source.name}>
-                                                    {source.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                                    {formatTime(audioCurrentTimes[source.id] || 0)} / {formatTime(audioDurations[source.id] || 0)}
-                                                </p>
+                        {/* 通常モードでのみ表示されるセクション */}
+                        {!isSimpleMode && (
+                            <>
+                                {((isSetSinkIdSupported && audioDevices.length > 0) || audioInputDevices.length > 0) && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                            <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconSettings2 /></span>
+                                            全体デバイス設定
+                                        </h2>
+                                        {micPermissionError && (
+                                            <div className="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm flex items-center gap-2">
+                                                <IconAlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                                <div>
+                                                    <span className="font-bold">デバイス名が正しく表示されません:</span> {micPermissionError}
+                                                    <p className="text-xs mt-1">ブラウザのアドレスバーの左にあるアイコンをクリックし、マイクのアクセスを許可してからページを再読み込みしてください。</p>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center">
-                                                {source.id !== 'default' && (
-                                                    <button 
-                                                        onClick={() => deleteAudioSource(source.id)}
-                                                        className="p-2 text-gray-400 hover:text-red-500 rounded-full"
-                                                        title="この音源を削除"
+                                        )}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* 入力デバイス設定 */}
+                                            {audioInputDevices.length > 0 && (
+                                                <div>
+                                                    <label htmlFor="audio-input-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconMic className="w-4 h-4" />入力デバイス (マイク)</label>
+                                                    <select 
+                                                        id="audio-input-select"
+                                                        value={selectedInputDeviceId} 
+                                                        onChange={(e) => setSelectedInputDeviceId(e.target.value)}
+                                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
                                                     >
-                                                        <IconTrash />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {/* 各カスタム音源のdurationを取得するための非表示audio要素 */}
-                                            {source.id !== 'default' && (
-                                                <audio src={source.url} onLoadedMetadata={(e) => onAudioLoadedMetadata(e, source.id)} className="hidden"></audio>
+                                                        <option value="default">システム標準</option>
+                                                        {audioInputDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `マイク ${device.deviceId.substring(0, 8)}`}</option>)}
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {/* 出力デバイス設定 */}
+                                            {isSetSinkIdSupported && audioDevices.length > 0 && (
+                                                <div>
+                                                    <label htmlFor="audio-output-select" className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1"><IconSpeaker className="w-4 h-4" />出力デバイス (スピーカー)</label>
+                                                    <select 
+                                                        id="audio-output-select"
+                                                        value={selectedSinkId} 
+                                                        onChange={(e) => setSelectedSinkId(e.target.value)}
+                                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                                                    >
+                                                        <option value="default">システム標準</option>
+                                                        {audioDevices.map(device => <option key={device.deviceId} value={device.deviceId}>{device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}</option>)}
+                                                    </select>
+                                                </div>
                                             )}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            {/* 汎用再生用の非表示audio要素 */}
-                            <audio
-                                ref={audioRef} 
-                                onPlay={onAudioPlay}
-                                onPause={onAudioPauseOrEnd}
-                                onEnded={onAudioPauseOrEnd}
-                                onTimeUpdate={onAudioTimeUpdate}
-                                className="hidden"
-                            />
-                        </div>
-
-                        {/* 新規スケジュール登録エリア */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
-                                <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconClock /></span>
-                                ステップ 2: スケジュール追加
-                            </h2>
-                            {/* 修正: grid-cols-12 に変更 */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <div className="md:col-span-4">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名前 (例: 朝の会)</label>
-                                    <input 
-                                        type="text" 
-                                        value={newName} 
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                        placeholder="チャイム名を入力" 
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">時間</label>
-                                    <input 
-                                        type="time" 
-                                        value={newTime} 
-                                        onChange={(e) => setNewTime(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-base" 
-                                    />
-                                </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">チャイム音</label>
-                                    <select 
-                                        value={newAudioId} 
-                                        onChange={(e) => setNewAudioId(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
-                                    >
-                                        {audioSources.map(source => (
-                                            <option key={source.id} value={source.id}>{source.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="md:col-span-3 w-full">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">タイプ</label>
-                                    <div className="flex rounded-md shadow-sm">
-                                        <button onClick={() => setNewScheduleType('weekly')} className={`px-4 py-2 text-sm font-medium rounded-l-md flex-1 transition ${newScheduleType === 'weekly' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'}`}>毎週</button>
-                                        <button onClick={() => setNewScheduleType('date')} className={`px-4 py-2 text-sm font-medium rounded-r-md flex-1 transition ${newScheduleType === 'date' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 -ml-px'}`}>日付指定</button>
-                                    </div>
-                                </div>
-
-                                {newScheduleType === 'weekly' ? (
-                                    <div className="md:col-span-4 w-full">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">曜日</label>
-                                        <div className="flex justify-between gap-1">
-                                            {DAYS_OF_WEEK.map((day) => (
-                                                <button
-                                                    key={day.id}
-                                                    onClick={() => toggleDay(day.id)}
-                                                    className={`
-                                                        w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-colors
-                                                        ${newDays.includes(day.id) 
-                                                            ? 'bg-indigo-600 text-white' 
-                                                            : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-400'}
-                                                    `}
-                                                    title={`${day.label}曜日`}
-                                                >
-                                                    {day.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="md:col-span-4 w-full">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日付</label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <IconCalendar className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                            <input 
-                                                type="date" 
-                                                value={newSpecificDate} 
-                                                onChange={(e) => setNewSpecificDate(e.target.value)}
-                                                className="w-full pl-10 p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-base" 
-                                            />
-                                        </div>
                                     </div>
                                 )}
-
-                                {isSetSinkIdSupported && audioDevices.length > 0 && (
+    
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                    <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconMusic /></span>
+                                    ステップ 1: チャイム音の設定
+                                </h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* 左側: URLから追加 */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">URLから追加 (保存可能)</h3>
+                                        <input 
+                                            type="text" 
+                                            placeholder="音声URLまたは共有リンク (Google Drive, Dropbox, OneDrive)" 
+                                            value={newAudioUrl}
+                                            onChange={(e) => setNewAudioUrl(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        />
+                                        <input 
+                                            type="text" 
+                                            placeholder="表示名" 
+                                            value={newAudioName}
+                                            onChange={(e) => setNewAudioName(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        />
+                                        <button onClick={addAudioSourceFromUrl} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition shadow-md">
+                                            + URLから音源を追加
+                                        </button>
+                                        {/* ファイルからアップロード */}
+                                        <label className="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg cursor-pointer transition shadow-md w-full mt-2">
+                                            <IconUpload />
+                                            <span>ファイルから追加 (一時的)</span>
+                                            <input type="file" accept="audio/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} />
+                                        </label>
+                                        {/* 注意書き */}
+                                        <button onClick={openWarningModal} className="flex items-center justify-center gap-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline pt-1 w-full">
+                                            <IconAlertTriangle className="w-3 h-3" />
+                                            <span>ファイルから追加する場合の注意点</span>
+                                        </button>
+                                    </div>
+                                    
+                                    {/* 右側: 音源リスト */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">登録済み音源リスト</h3>
+                                        {audioSources.map(source => (
+                                            <div key={source.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                                                <button onClick={() => toggleAudioPlayback(source)} className="p-2 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900">
+                                                    {currentlyPlayingId === source.id ? <IconPause /> : <IconPlay />}
+                                                </button>
+                                                <div className="flex-1 truncate">
+                                                    <p className="text-sm text-gray-800 dark:text-gray-200 truncate" title={source.name}>
+                                                        {source.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                                        {formatTime(audioCurrentTimes[source.id] || 0)} / {formatTime(audioDurations[source.id] || 0)}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    {source.id !== 'default' && (
+                                                        <button 
+                                                            onClick={() => deleteAudioSource(source.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-500 rounded-full"
+                                                            title="この音源を削除"
+                                                        >
+                                                            <IconTrash />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {/* 各カスタム音源のdurationを取得するための非表示audio要素 */}
+                                                {source.id !== 'default' && (
+                                                    <audio src={source.url} onLoadedMetadata={(e) => onAudioLoadedMetadata(e, source.id)} className="hidden"></audio>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                {/* 汎用再生用の非表示audio要素 */}
+                                <audio
+                                    ref={audioRef} 
+                                    onPlay={onAudioPlay}
+                                    onPause={onAudioPauseOrEnd}
+                                    onEnded={onAudioPauseOrEnd}
+                                    onTimeUpdate={onAudioTimeUpdate}
+                                    className="hidden"
+                                />
+                                </div>
+    
+                            {/* 新規スケジュール登録エリア */}
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                    <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconClock /></span>
+                                    ステップ 2: スケジュール追加
+                                </h2>
+                                {/* 修正: grid-cols-12 に変更 */}
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                                     <div className="md:col-span-4">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">出力デバイス</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">名前 (例: 朝の会)</label>
+                                        <input 
+                                            type="text" 
+                                            value={newName} 
+                                            onChange={(e) => setNewName(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                            placeholder="チャイム名を入力" 
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">時間</label>
+                                        <input 
+                                            type="time" 
+                                            value={newTime} 
+                                            onChange={(e) => setNewTime(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-base" 
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">チャイム音</label>
                                         <select 
-                                            value={newSinkId} 
-                                            onChange={(e) => setNewSinkId(e.target.value)}
+                                            value={newAudioId} 
+                                            onChange={(e) => setNewAudioId(e.target.value)}
                                             className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
                                         >
-                                            <option value="default">全体設定に従う</option>
-                                            {audioDevices.map(device => (
-                                                <option key={device.deviceId} value={device.deviceId}>
-                                                    {device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}
-                                                </option>
+                                            {audioSources.map(source => (
+                                                <option key={source.id} value={source.id}>{source.name}</option>
                                             ))}
                                         </select>
                                     </div>
-                                )}
-
-                                <div className="md:col-span-4 w-full">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">音量: {Math.round(newVolume * 100)}%</label>
-                                    <div className="flex items-center gap-3">
-                                        <IconVolume2 className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-                                        <input 
-                                            type="range" min="0" max="1.5" step="0.01" value={newVolume} onChange={(e) => setNewVolume(parseFloat(e.target.value))}
-                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
-                                        />
+                                    <div className="md:col-span-3 w-full">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">タイプ</label>
+                                        <div className="flex rounded-md shadow-sm">
+                                            <button onClick={() => setNewScheduleType('weekly')} className={`px-4 py-2 text-sm font-medium rounded-l-md flex-1 transition ${newScheduleType === 'weekly' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'}`}>毎週</button>
+                                            <button onClick={() => setNewScheduleType('date')} className={`px-4 py-2 text-sm font-medium rounded-r-md flex-1 transition ${newScheduleType === 'date' ? 'bg-indigo-600 text-white z-10' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 -ml-px'}`}>日付指定</button>
+                                        </div>
+                                    </div>
+    
+                                    {newScheduleType === 'weekly' ? (
+                                        <div className="md:col-span-4 w-full">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">曜日</label>
+                                            <div className="flex justify-between gap-1">
+                                                {DAYS_OF_WEEK.map((day) => (
+                                                    <button
+                                                        key={day.id}
+                                                        onClick={() => toggleDay(day.id)}
+                                                        className={`
+                                                            w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-colors
+                                                            ${newDays.includes(day.id) 
+                                                                ? 'bg-indigo-600 text-white' 
+                                                                : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-400'}
+                                                        `}
+                                                        title={`${day.label}曜日`}
+                                                    >
+                                                        {day.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="md:col-span-4 w-full">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">日付</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <IconCalendar className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                                <input 
+                                                    type="date" 
+                                                    value={newSpecificDate} 
+                                                    onChange={(e) => setNewSpecificDate(e.target.value)}
+                                                    className="w-full pl-10 p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-base" 
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+    
+                                    {isSetSinkIdSupported && audioDevices.length > 0 && (
+                                        <div className="md:col-span-4">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">出力デバイス</label>
+                                            <select 
+                                                value={newSinkId} 
+                                                onChange={(e) => setNewSinkId(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                                            >
+                                                <option value="default">全体設定に従う</option>
+                                                {audioDevices.map(device => (
+                                                    <option key={device.deviceId} value={device.deviceId}>
+                                                        {device.label || `スピーカー ${device.deviceId.substring(0, 8)}`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+    
+                                    <div className="md:col-span-4 w-full">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">音量: {Math.round(newVolume * 100)}%</label>
+                                        <div className="flex items-center gap-3">
+                                            <IconVolume2 className="w-5 h-5 text-gray-500 dark:text-gray-300" />
+                                            <input 
+                                                type="range" min="0" max="1.5" step="0.01" value={newVolume} onChange={(e) => setNewVolume(parseFloat(e.target.value))}
+                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
+                                            />
+                                            <button 
+                                                onClick={() => setNewVolume(1)} 
+                                                className="text-xs bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 px-2 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition flex-shrink-0"
+                                                title="音量を100%に戻す"
+                                            >
+                                                リセット
+                                            </button>
+                                        </div>
+                                    </div>
+    
+                                    <div className="md:col-span-12 mt-4">
                                         <button 
-                                            onClick={() => setNewVolume(1)} 
-                                            className="text-xs bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 px-2 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition flex-shrink-0"
-                                            title="音量を100%に戻す"
+                                            onClick={addSchedule}
+                                            className={`w-full py-2 px-4 rounded-lg font-bold text-white transition bg-green-600 hover:bg-green-700 shadow-md`}
                                         >
-                                            リセット
+                                            + スケジュールに追加
                                         </button>
                                     </div>
                                 </div>
-
-                                <div className="md:col-span-12 mt-4">
-                                    <button 
-                                        onClick={addSchedule}
-                                        className={`w-full py-2 px-4 rounded-lg font-bold text-white transition bg-green-600 hover:bg-green-700 shadow-md`}
-                                    >
-                                        + スケジュールに追加
+                            </div>
+    
+                            {/* スケジュール一覧 */}
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
+                                    <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconCalendar /></span>
+                                    ステップ 3: 登録済みスケジュール
+                                </h2>
+    
+                                {/* インポート・エクスポートボタン */}
+                                <div className="flex gap-2 mb-4">
+                                    <button onClick={() => importInputRef.current.click()} className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
+                                        <IconImport />
+                                        <span>インポート</span>
+                                    </button>
+                                    <input type="file" accept=".json" onChange={handleImport} ref={importInputRef} className="hidden" />
+                                    <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
+                                        <IconExport />
+                                        <span>エクスポート</span>
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* スケジュール一覧 */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2 border-b dark:border-gray-700 pb-2">
-                                <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconCalendar /></span>
-                                ステップ 3: 登録済みスケジュール
-                            </h2>
-
-                            {/* インポート・エクスポートボタン */}
-                            <div className="flex gap-2 mb-4">
-                                <button onClick={() => importInputRef.current.click()} className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
-                                    <IconImport />
-                                    <span>インポート</span>
-                                </button>
-                                <input type="file" accept=".json" onChange={handleImport} ref={importInputRef} className="hidden" />
-                                <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
-                                    <IconExport />
-                                    <span>エクスポート</span>
-                                </button>
-                            </div>
-
-                            {schedules.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                                    <p>登録されているスケジュールはありません。</p>
-                                    <p className="text-sm mt-1">上のフォームから新しいスケジュールを追加してください。</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {schedules.sort((a, b) => a.time.localeCompare(b.time)).map((schedule) => (
-                                        <div 
-                                            key={schedule.id} 
-                                            className={`
-                                                p-3 rounded-lg border transition-all duration-300 flex items-center gap-3
-                                                ${schedule.enabled ? 'bg-white dark:bg-gray-700/50 border-gray-200 dark:border-gray-600' : 'bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60'}
-                                            `}
-                                        >
-                                            {/* トグルスイッチ */}
-                                            <button onClick={() => toggleSchedule(schedule.id)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${schedule.enabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`} title={schedule.enabled ? '無効にする' : '有効にする'}>
-                                                <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${schedule.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                            </button>
-
-                                            {/* スケジュール情報 */}
-                                            <div className="flex-1 overflow-hidden">
-                                                <div className="flex items-baseline gap-3">
-                                                    <span className="text-xl font-mono font-bold text-gray-800 dark:text-gray-100">{schedule.time}</span>
-                                                    <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">{schedule.name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    <span className="truncate flex items-center gap-1"><IconMusic className="w-3 h-3" />{(audioSources.find(s => s.id === schedule.audioId) || {name: '未設定'}).name}</span>
-                                                    <span className="flex-shrink-0">|</span>
-                                                    {isSetSinkIdSupported && (
-                                                        <span className="flex items-center gap-1" title={`出力先: ${(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定に従う'}).label}`}>
-                                                            <IconSpeaker className="w-3 h-3" />
-                                                            <span className="truncate max-w-[100px]">
-                                                                {(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定'}).label}
+    
+                                {schedules.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                        <p>登録されているスケジュールはありません。</p>
+                                        <p className="text-sm mt-1">上のフォームから新しいスケジュールを追加してください。</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {schedules.sort((a, b) => a.time.localeCompare(b.time)).map((schedule) => (
+                                            <div 
+                                                key={schedule.id} 
+                                                className={`
+                                                    p-3 rounded-lg border transition-all duration-300 flex items-center gap-3
+                                                    ${schedule.enabled ? 'bg-white dark:bg-gray-700/50 border-gray-200 dark:border-gray-600' : 'bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60'}
+                                                `}
+                                            >
+                                                {/* トグルスイッチ */}
+                                                <button onClick={() => toggleSchedule(schedule.id)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${schedule.enabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`} title={schedule.enabled ? '無効にする' : '有効にする'}>
+                                                    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${schedule.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+    
+                                                {/* スケジュール情報 */}
+                                                <div className="flex-1 overflow-hidden">
+                                                    <div className="flex items-baseline gap-3">
+                                                        <span className="text-xl font-mono font-bold text-gray-800 dark:text-gray-100">{schedule.time}</span>
+                                                        <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">{schedule.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                        <span className="truncate flex items-center gap-1"><IconMusic className="w-3 h-3" />{(audioSources.find(s => s.id === schedule.audioId) || {name: '未設定'}).name}</span>
+                                                        <span className="flex-shrink-0">|</span>
+                                                        {isSetSinkIdSupported && (
+                                                            <span className="flex items-center gap-1" title={`出力先: ${(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定に従う'}).label}`}>
+                                                                <IconSpeaker className="w-3 h-3" />
+                                                                <span className="truncate max-w-[100px]">
+                                                                    {(audioDevices.find(d => d.deviceId === schedule.sinkId) || {label: '全体設定'}).label}
+                                                                </span>
                                                             </span>
-                                                        </span>
-                                                    )}
-                                                    {(schedule.scheduleType || 'weekly') === 'weekly' ? (
-                                                        <div className="flex gap-1 ml-2">
-                                                            {DAYS_OF_WEEK.map(day => (
-                                                                <span key={day.id} className={`font-bold w-4 h-4 flex items-center justify-center rounded-full ${schedule.days.includes(day.id) ? (day.color) : 'text-gray-300 dark:text-gray-600'}`}>{day.label}</span>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-1 font-semibold text-purple-700 dark:text-purple-300">
-                                                            <IconCalendar className="w-3 h-3" />
-                                                            <span>{schedule.specificDate}</span>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                        {(schedule.scheduleType || 'weekly') === 'weekly' ? (
+                                                            <div className="flex gap-1 ml-2">
+                                                                {DAYS_OF_WEEK.map(day => (
+                                                                    <span key={day.id} className={`font-bold w-4 h-4 flex items-center justify-center rounded-full ${schedule.days.includes(day.id) ? (day.color) : 'text-gray-300 dark:text-gray-600'}`}>{day.label}</span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1 font-semibold text-purple-700 dark:text-purple-300">
+                                                                <IconCalendar className="w-3 h-3" />
+                                                                <span>{schedule.specificDate}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+    
+                                                {/* 操作ボタン */}
+                                                <div className="flex items-center">
+                                                    <button onClick={() => playChime(schedule)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition dark:text-indigo-400 dark:hover:bg-indigo-900" title="テスト再生"><IconPlay /></button>
+                                                    <button onClick={() => duplicateSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="コピー"><IconCopy /></button>
+                                                    <button onClick={() => openEditModal(schedule)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="編集"><IconEdit /></button>
+                                                    <button onClick={() => deleteSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-red-100 rounded-full transition dark:text-gray-400 dark:hover:bg-red-900" title="削除"><IconTrash /></button>
                                                 </div>
                                             </div>
-
-                                            {/* 操作ボタン */}
-                                            <div className="flex items-center">
-                                                <button onClick={() => playChime(schedule)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition dark:text-indigo-400 dark:hover:bg-indigo-900" title="テスト再生"><IconPlay /></button>
-                                                <button onClick={() => duplicateSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="コピー"><IconCopy /></button>
-                                                <button onClick={() => openEditModal(schedule)} className="p-2 text-gray-500 hover:bg-blue-100 rounded-full transition dark:text-gray-400 dark:hover:bg-blue-900" title="編集"><IconEdit /></button>
-                                                <button onClick={() => deleteSchedule(schedule.id)} className="p-2 text-gray-500 hover:bg-red-100 rounded-full transition dark:text-gray-400 dark:hover:bg-red-900" title="削除"><IconTrash /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                        )}
 
                         {/* 編集モーダル */}
                         {editingSchedule && (
