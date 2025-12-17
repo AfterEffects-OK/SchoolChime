@@ -25,6 +25,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- holiday_jp for Japanese holidays -->
+    <script src="https://cdn.jsdelivr.net/npm/holiday_jp@latest/holiday_jp.min.js"></script>
+
     <style>
         /* bodyの背景はReactのルート要素でTailwindクラスを使って設定します */
         .digital-clock {
@@ -286,6 +289,12 @@
                 return savedMode ? JSON.parse(savedMode) : false;
             });
 
+            // 祝日停止設定の状態
+            const [stopOnHolidays, setStopOnHolidays] = useState(() => {
+                const saved = localStorage.getItem('schoolChimeStopOnHolidays');
+                return saved ? JSON.parse(saved) : true; // デフォルトは有効
+            });
+
             const toggleDarkMode = () => {
                 setIsDarkMode(prev => !prev);
             };
@@ -305,6 +314,11 @@
             useEffect(() => {
                 localStorage.setItem('schoolChimeSimpleMode', JSON.stringify(isSimpleMode));
             }, [isSimpleMode]);
+
+            // 祝日停止設定をlocalStorageに保存
+            useEffect(() => {
+                localStorage.setItem('schoolChimeStopOnHolidays', JSON.stringify(stopOnHolidays));
+            }, [stopOnHolidays]);
 
             // setSinkId のサポート状況を確認
             useEffect(() => {
@@ -438,6 +452,12 @@
                 // 重複再生防止（同じ分内での連打防止、0秒付近のみでトリガー）
                 if (currentSecond > 2) return; 
                 
+                // 祝日停止オプションのチェック
+                if (stopOnHolidays && holiday_jp && holiday_jp.isHoliday(now)) {
+                    console.log(`祝日のため、チャイムをスキップしました。 (${now.toLocaleDateString()})`);
+                    return;
+                }
+
                 // 最後に再生した時間が現在と同じ分ならスキップ（1分間に1回だけ鳴らす）
                 if (lastPlayedTime === timeString) return;
 
@@ -1003,6 +1023,7 @@
                                                     </select>
                                                 </div>
                                             )}
+                                            
                                         </div>
                                     </div>
                                 )}
@@ -1046,6 +1067,21 @@
                                         </button>
                                     </div>
                                     
+                                    {/* 祝日設定 */}
+                                    <div className="!mt-6 flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-600">
+                                        <label htmlFor="stop-on-holidays" className="text-sm font-bold text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                                            <IconCalendar className="w-4 h-4" />
+                                            <span>祝日はチャイムを停止</span>
+                                        </label>
+                                        <button 
+                                            id="stop-on-holidays"
+                                            onClick={() => setStopOnHolidays(prev => !prev)} 
+                                            className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${stopOnHolidays ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`} 
+                                            title={stopOnHolidays ? '祝日の停止を無効化' : '祝日の停止を有効化'}>
+                                            <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${stopOnHolidays ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+
                                     {/* 右側: 音源リスト */}
                                     <div className="space-y-3">
                                         <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400">登録済み音源リスト</h3>
