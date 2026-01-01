@@ -918,7 +918,43 @@
                 }
 
                 try {
-                    const content = JSON.stringify(schedules, null, 2);
+                    // 音源リストの保存処理（ファイルデータも含む）
+                    const sourcesToSave = await Promise.all(audioSources.map(async (source) => {
+                        // Blob URLの場合（ファイルから追加されたもの）はデータを埋め込む
+                        if (source.url.startsWith('blob:')) {
+                            try {
+                                const response = await fetch(source.url);
+                                const blob = await response.blob();
+                                return new Promise((resolve, reject) => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                        // Data URL形式 (data:audio/mp3;base64,...) で取得
+                                        resolve({
+                                            ...source,
+                                            url: '', // 元のBlob URLは他PCでは無効なため空にする
+                                            isBlob: true, // 復元時のフラグ
+                                            dataUrl: reader.result // 実データ（Base64）
+                                        });
+                                    };
+                                    reader.onerror = reject;
+                                    reader.readAsDataURL(blob);
+                                });
+                            } catch (e) {
+                                console.error("Failed to process blob source:", source.name, e);
+                                return null; // エラー時は除外
+                            }
+                        }
+                        // 通常のURL音源の場合
+                        return source;
+                    }));
+
+                    // null（エラー）を除外
+                    const validSources = sourcesToSave.filter(s => s !== null);
+
+                    const dataToSave = {
+                        audioSources: validSources
+                    };
+                    const content = JSON.stringify(dataToSave, null, 2);
                     // 日本語対応のため、UTF-8文字列をBase64にエンコード
                     const base64Content = btoa(unescape(encodeURIComponent(content)));
                     
@@ -990,11 +1026,47 @@
                     const data = await res.json();
                     // Base64デコード（日本語対応）
                     const content = decodeURIComponent(escape(atob(data.content)));
-                    const loadedSchedules = JSON.parse(content);
+                    const loadedData = JSON.parse(content);
 
-                    if (confirm('現在のスケジュールを上書きして、GitHubから読み込みますか？')) {
-                         setSchedules(loadedSchedules);
-                         alert('読み込みが完了しました。');
+                    if (confirm('現在の音源設定を上書きして、GitHubから読み込みますか？\n(スケジュールは変更されません)')) {
+                         // 配列なら旧形式（スケジュールのみ）、オブジェクトなら新形式（スケジュール+音源）
+                         if (Array.isArray(loadedData)) {
+                             alert('このファイルは旧形式（スケジュールのみ）のため、音源データが含まれていません。');
+                         } else {
+                             if (loadedData.audioSources) {
+                                 // Data URLを持つ音源をBlob URLに復元
+                                 const restoredSources = loadedData.audioSources.map(source => {
+                                     if (source.isBlob && source.dataUrl) {
+                                         try {
+                                             // Data URL -> Blob -> Blob URL
+                                             const arr = source.dataUrl.split(',');
+                                             const mime = arr[0].match(/:(.*?);/)[1];
+                                             const bstr = atob(arr[1]);
+                                             let n = bstr.length;
+                                             const u8arr = new Uint8Array(n);
+                                             while(n--){
+                                                 u8arr[n] = bstr.charCodeAt(n);
+                                             }
+                                             const blob = new Blob([u8arr], {type:mime});
+                                             const newUrl = URL.createObjectURL(blob);
+                                             
+                                             // 不要になったdataUrlはメモリ節約のため削除
+                                             const { dataUrl, isBlob, ...rest } = source;
+                                             return { ...rest, url: newUrl };
+                                         } catch (e) {
+                                             console.error("Failed to restore blob:", source.name, e);
+                                             return source;
+                                         }
+                                     }
+                                     return source;
+                                 });
+
+                                 setAudioSources(restoredSources);
+                                 alert('音源設定（ファイルデータ含む）の読み込みが完了しました。');
+                             } else {
+                                 alert('保存されたデータに音源リストが見つかりませんでした。');
+                             }
+                         }
                          setIsGithubModalOpen(false);
                     }
 
@@ -1148,6 +1220,15 @@
                                     <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg dark:bg-indigo-900 dark:text-indigo-300"><IconMusic /></span>
                                     ステップ 1: チャイム音の設定
                                 </h2>
+                                
+                                {/* GitHub連携ボタン */}
+                                <div className="mb-4">
+                                    <button onClick={() => setIsGithubModalOpen(true)} className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm w-full md:w-auto">
+                                        <IconGithub />
+                                        <span>GitHub連携 (音源ファイルも保存)</span>
+                                    </button>
+                                </div>
+
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {/* 左側: URLから追加 */}
                                     <div className="space-y-3">
@@ -1369,10 +1450,6 @@
                                     <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
                                         <IconExport />
                                         <span>エクスポート</span>
-                                    </button>
-                                    <button onClick={() => setIsGithubModalOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg cursor-pointer transition shadow-sm text-sm">
-                                        <IconGithub />
-                                        <span>GitHub連携</span>
                                     </button>
                                 </div>
     
@@ -1692,7 +1769,7 @@
                                     </div>
                                     <div className="p-6 space-y-4">
                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            GitHubリポジトリにスケジュール設定を直接保存・読み込みします。<br/>
+                                            GitHubリポジトリに音源設定（ファイルデータ含む）を保存・読み込みします。<br/>
                                             <span className="text-xs text-red-500">※トークンはブラウザに保存されます。共用PCでは注意してください。</span>
                                         </p>
                                         <div>
