@@ -240,6 +240,7 @@
             const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
             const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
             const [isGithubModalOpen, setIsGithubModalOpen] = useState(false); // GitHub連携モーダル
+            const [isGithubHelpModalOpen, setIsGithubHelpModalOpen] = useState(false); // GitHubヘルプモーダル
 
             // 新規スケジュール入力用
             const [newName, setNewName] = useState('');
@@ -1766,6 +1767,9 @@
                                             <IconGithub />
                                             <span>GitHub連携設定</span>
                                         </h3>
+                                        <button onClick={() => setIsGithubHelpModalOpen(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                            トークンの取得方法
+                                        </button>
                                     </div>
                                     <div className="p-6 space-y-4">
                                         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1800,6 +1804,37 @@
                                         </button>
                                         <button onClick={handleGithubSave} className="px-4 py-2 rounded text-white bg-green-600 hover:bg-green-700 transition text-sm flex items-center gap-1">
                                             <IconExport className="w-4 h-4" /> 保存 (Upload)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* GitHubヘルプモーダル (z-indexを高く設定) */}
+                        {isGithubHelpModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4" style={{ zIndex: 60 }} onClick={() => setIsGithubHelpModalOpen(false)}>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                                    <div className="p-4 border-b dark:border-gray-700">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">GitHubトークンの取得手順</h3>
+                                    </div>
+                                    <div className="p-6 space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                                        <ol className="list-decimal list-inside space-y-3">
+                                            <li>GitHubにログインし、右上のアイコンから <strong>Settings</strong> を開きます。</li>
+                                            <li>左サイドバーの一番下にある <strong>Developer settings</strong> をクリックします。</li>
+                                            <li><strong>Personal access tokens</strong> &gt; <strong>Tokens (classic)</strong> を選択します。</li>
+                                            <li><strong>Generate new token (classic)</strong> をクリックします。</li>
+                                            <li><strong>Note</strong> にわかりやすい名前（例: School Chime App）を入力します。</li>
+                                            <li><strong>Select scopes</strong> で、保存先が公開リポジトリなら <strong>public_repo</strong>、非公開なら <strong>repo</strong> にチェックを入れます。</li>
+                                            <li>画面下の <strong>Generate token</strong> をクリックします。</li>
+                                            <li>表示されたトークン（<code>ghp_...</code>）をコピーして、アプリの設定欄に貼り付けてください。</li>
+                                        </ol>
+                                        <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                                            <p>※トークンは一度しか表示されません。コピーし忘れた場合は再生成してください。</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-700 flex justify-end rounded-b-lg">
+                                        <button onClick={() => setIsGithubHelpModalOpen(false)} className="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                                            閉じる
                                         </button>
                                     </div>
                                 </div>
