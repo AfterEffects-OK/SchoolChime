@@ -280,6 +280,9 @@
 
 
             const audioRef = useRef(null);
+            const boostAudioRef = useRef(null); // 増幅再生用 (Web Audio API)
+            const audioContextRef = useRef(null);
+            const gainNodeRef = useRef(null);
             const importInputRef = useRef(null); // インポート用ファイル入力参照
             const fileInputRef = useRef(null); // 音源アップロード用
             const importIdCounter = useRef(0); // インポート用の一意IDカウンター
@@ -416,6 +419,28 @@
                 localStorage.setItem('schoolChimeGithubConfig', JSON.stringify(githubConfig));
             }, [githubConfig]);
 
+            // Web Audio API セットアップ (増幅再生用)
+            useEffect(() => {
+                if (boostAudioRef.current && !audioContextRef.current) {
+                    try {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        const ctx = new AudioContext();
+                        audioContextRef.current = ctx;
+                        
+                        // ソースとゲインノードの作成
+                        const source = ctx.createMediaElementSource(boostAudioRef.current);
+                        const gainNode = ctx.createGain();
+                        
+                        // 接続: Source -> Gain -> Destination
+                        source.connect(gainNode);
+                        gainNode.connect(ctx.destination);
+                        
+                        gainNodeRef.current = gainNode;
+                    } catch (e) {
+                        console.error("Web Audio API setup failed:", e);
+                    }
+                }
+            }, []);
 
             // ローカルストレージからスケジュールを読み込み
             useEffect(() => {
@@ -539,28 +564,62 @@
 
             // チャイム再生
             const playChime = (schedule) => {
-                if (!audioRef.current) return;
+                // 両方のプレイヤーを停止・リセット
+                if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+                if (boostAudioRef.current) { boostAudioRef.current.pause(); boostAudioRef.current.currentTime = 0; }
 
                 const audioIdToPlay = schedule.audioId || 'default';
                 const sourceToPlay = audioSources.find(s => s.id === audioIdToPlay) || audioSources[0];
                 
                 if (sourceToPlay) {
                     console.log(`チャイム再生: ${schedule.name} (${sourceToPlay.name})`);
+
+                    const vol = schedule.volume ?? 1;
+                    let useBoost = vol > 1.0; // 音量が100%を超える場合はブーストモード
+
+                    // クラウドストレージのURL（CORS制限があるもの）はブーストモードを強制無効化
+                    // Web Audio APIで再生するにはCORSヘッダーが必要だが、Google Drive等は返さないため再生エラーになる
+                    if (useBoost && (
+                        sourceToPlay.url.includes('drive.google.com') || 
+                        sourceToPlay.url.includes('docs.google.com') ||
+                        sourceToPlay.url.includes('dropbox.com') || 
+                        sourceToPlay.url.includes('onedrive') ||
+                        sourceToPlay.url.includes('1drv.ms')
+                    )) {
+                        console.warn("CORS制限のため、この音源ではブーストモード(100%超)が無効化され、通常再生(最大100%)になります。");
+                        useBoost = false;
+                    }
+                    
+                    // 使用するプレイヤーを選択
+                    const player = useBoost ? boostAudioRef.current : audioRef.current;
+                    if (!player) return;
                     
                     // 出力デバイスの決定: スケジュール固有の設定 -> 全体設定 の順で優先
                     const targetSinkId = (schedule.sinkId && schedule.sinkId !== 'default') ? schedule.sinkId : selectedSinkId;
 
                     // 出力先を設定
-                    if (isSetSinkIdSupported && audioRef.current.sinkId !== targetSinkId) {
-                        audioRef.current.setSinkId(targetSinkId).catch(err => console.error(`出力先の変更に失敗: ${targetSinkId}`, err));
+                    if (isSetSinkIdSupported && player.sinkId !== targetSinkId) {
+                        player.setSinkId(targetSinkId).catch(err => console.error(`出力先の変更に失敗: ${targetSinkId}`, err));
                     }
 
-                    // スケジュールに設定された音量を適用（未設定なら100%）
-                    audioRef.current.volume = schedule.volume ?? 1; // 150%まで許容
+                    // 音量設定
+                    if (useBoost) {
+                        // Web Audio API (GainNode) で増幅
+                        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                            audioContextRef.current.resume();
+                        }
+                        if (gainNodeRef.current) {
+                            gainNodeRef.current.gain.value = vol; // 1.0超えの値を設定
+                        }
+                        player.volume = 1.0; // 要素自体は最大にしておく
+                    } else {
+                        // 通常再生
+                        player.volume = Math.min(vol, 1.0);
+                    }
+
                     // 再生ソースを動的に設定
-                    audioRef.current.src = sourceToPlay.url;
-                    audioRef.current.currentTime = 0;
-                    audioRef.current.play()
+                    player.src = sourceToPlay.url;
+                    player.play()
                         // カスタムモーダルを使うべきだが、今回はalertで代用
                         .then(() => {
                             setIsPlaying(true);
@@ -638,8 +697,8 @@
             // クラウドサービスの共有URLを直接再生可能なURLに変換する
             const transformCloudUrl = (url) => {
                 try {
-                    // Google Drive
-                    if (url.includes('drive.google.com')) {
+                    // Google Drive & Docs
+                    if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
                         // パターン1: .../file/d/FILE_ID/... (間に /u/0/ などが入る場合に対応)
                         let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
                         
@@ -701,6 +760,9 @@
 
             // 個別再生/一時停止のトグル
             const toggleAudioPlayback = (source) => {
+                // ブースト用プレイヤーも停止しておく
+                if (boostAudioRef.current) { boostAudioRef.current.pause(); boostAudioRef.current.currentTime = 0; }
+
                 if (currentlyPlayingId === source.id) {
                     // 再生中なので一時停止
                     audioRef.current.pause();
@@ -1202,6 +1264,17 @@
                             onEnded={onAudioPauseOrEnd}
                             onTimeUpdate={onAudioTimeUpdate}
                             className="hidden"
+                        />
+
+                        {/* 増幅再生用 (Web Audio API) の非表示audio要素 */}
+                        <audio
+                            ref={boostAudioRef} 
+                            onPlay={onAudioPlay}
+                            onPause={onAudioPauseOrEnd}
+                            onEnded={onAudioPauseOrEnd}
+                            onTimeUpdate={onAudioTimeUpdate}
+                            className="hidden"
+                            crossOrigin="anonymous"
                         />
 
                         {/* 通常モードでのみ表示されるセクション */}
