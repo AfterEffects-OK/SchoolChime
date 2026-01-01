@@ -792,8 +792,8 @@
                 }));
             };
             const onAudioLoadedMetadata = (e, sourceId) => {
-                // Blob URLの場合はメインのaudio要素でdurationを取得
-                if (e.target.src.startsWith('blob:')) {
+                // すべての音源でdurationを取得 (Blob URLだけでなく、Google Drive等のURLも対象)
+                if (Number.isFinite(e.target.duration)) {
                     setAudioDurations(prev => ({
                         ...prev,
                         [sourceId]: e.target.duration
