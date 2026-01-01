@@ -574,17 +574,20 @@
             const transformCloudUrl = (url) => {
                 try {
                     // Google Drive
-                    // パターン1: https://drive.google.com/file/d/FILE_ID/view...
-                    let match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-                    // パターン2: https://drive.google.com/open?id=FILE_ID
-                    if (!match) {
-                        match = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-                    }
-                    
-                    if (match && match[1]) {
-                        const fileId = match[1];
-                        console.log("Google Driveのリンクを変換:", fileId);
-                        return `https://drive.google.com/uc?export=download&confirm=t&id=${fileId}`;
+                    if (url.includes('drive.google.com')) {
+                        // パターン1: .../file/d/FILE_ID/... (間に /u/0/ などが入る場合に対応)
+                        let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                        
+                        // パターン2: ...id=FILE_ID...
+                        if (!match) {
+                            match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                        }
+                        
+                        if (match && match[1]) {
+                            const fileId = match[1];
+                            console.log("Google Driveのリンクを変換:", fileId);
+                            return `https://drive.google.com/uc?export=download&confirm=t&id=${fileId}`;
+                        }
                     }
 
                     // Dropbox: https://www.dropbox.com/s/..../file.mp3?dl=0
