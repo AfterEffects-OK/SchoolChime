@@ -1,0 +1,57 @@
+{
+  "audioSources": [
+    {
+      "id": "default",
+      "name": "スクールチャイム（デフォルト）",
+      "url": "https://github.com/AfterEffects-OK/SchoolChime/raw/refs/heads/main/Japanese_School_Bell02-01(-16dB).mp3"
+    },
+    {
+      "id": "custom-1767282533632",
+      "name": "出席確認　10分前案内",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/%E5%87%BA%E5%B8%AD%E3%81%AE%E7%A2%BA%E8%AA%8D%E3%81%AF%E3%80%81%E8%AC%9B%E7%BE%A9%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8B10%E5%88%86%E5%89%8D%E3%81%8B%E3%82%89%E9%96%8B%E5%A7%8B%E3%81%97%E3%81%BE%E3%81%99%E3%80%82...%E3%81%97%E3%81%B0%E3%82%89%E3%81%8F%E3%81%8A%E5%BE%85%E3%81%A1%E3%81%8F%E3%81%A0%E3%81%95%E3%81%84%E3%80%82.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767282556440",
+      "name": "出席確認案内（あけおめコメント付き）",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/001_%E6%98%A5%E6%97%A5%E9%83%A8%E3%81%A4%E3%82%80%E3%81%8E%EF%BC%88%E3%83%8E%E3%83%BC%E3%83%9E%E3%83%AB%EF%BC%89_%E3%81%82%E3%81%91%E3%81%BE%E3%81%97%E3%81%A6%E3%81%8A%E3%82%81%E3%81%A7%E3%81%A8%E2%80%A6.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767282676840",
+      "name": "出席確認案内（あいさつ付き）",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/%E3%81%8A%E3%81%AF%E3%82%88%E3%81%86%E3%81%94%E3%81%96%E3%81%84%E3%81%BE%E3%81%99%EF%BC%81...%E8%AC%9B%E7%BE%A9%E9%96%8B%E5%A7%8B%E6%99%82%E9%96%93%E3%81%BE%E3%81%A7%E3%80%81%E3%81%97%E3%81%B0%E3%82%89%E3%81%8F%E3%81%8A%E5%BE%85%E3%81%A1%E3%81%8F%E3%81%A0%E3%81%95%E3%81%84%5B1%5D.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767282777024",
+      "name": "出席確認案内（ノーマル）",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/%E3%81%BE%E3%82%82%E3%81%AA%E3%81%8F%E3%80%81%E3%82%AA%E3%83%B3%E3%83%A9%E3%82%A4%E3%83%B3%E8%AC%9B%E7%BE%A9%E3%81%8C%E5%A7%8B%E3%81%BE%E3%82%8A%E3%81%BE%E3%81%99%E3%80%82...%E8%AC%9B%E7%BE%A9%E9%96%8B%E5%A7%8B%E6%99%82%E9%96%93%E3%81%BE%E3%81%A7%E3%80%81%E3%81%97%E3%81%B0%E3%82%89%E3%81%8F%E3%81%8A%E5%BE%85%E3%81%A1%E3%81%8F%E3%81%A0%E3%81%95%E3%81%84.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767282851353",
+      "name": "配信開始30分前コメント",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/001_%E5%9B%9B%E5%9B%BD%E3%82%81%E3%81%9F%E3%82%93%EF%BC%88%E3%83%8E%E3%83%BC%E3%83%9E%E3%83%AB%EF%BC%89_%E9%85%8D%E4%BF%A1%E9%96%8B%E5%A7%8B30%E5%88%86%E5%89%8D%E3%81%A7%E3%81%99.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767284695978",
+      "name": "おみくじルーレット案内",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/002_%E6%98%A5%E6%97%A5%E9%83%A8%E3%81%A4%E3%82%80%E3%81%8E%EF%BC%88%E3%83%8E%E3%83%BC%E3%83%9E%E3%83%AB%EF%BC%89_%E8%AC%9B%E7%BE%A9%E3%83%8A%E3%83%93%E3%82%B2%E3%83%BC%E3%82%BF%E3%83%BC%E3%81%AB%E2%80%A6.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767285325436",
+      "name": "あけおめ動画案内",
+      "url": "https://github.com/AfterEffects-OK/PortalSite/raw/refs/heads/main/Sound/003_%E6%98%A5%E6%97%A5%E9%83%A8%E3%81%A4%E3%82%80%E3%81%8E%EF%BC%88%E3%83%8E%E3%83%BC%E3%83%9E%E3%83%AB%EF%BC%89_%E4%BB%8A%E5%B9%B4%E3%81%AE%E3%81%82%E3%81%91%E3%81%8A%E3%82%81%E5%8B%95%E7%94%BB%E2%80%A6.wav",
+      "from": "url"
+    },
+    {
+      "id": "custom-1767287542773",
+      "name": "テスト",
+      "url": "https://drive.google.com/uc?export=download&confirm=t&id=1LKYnLoQa8Uu4RNMe0YEhEdRdQnZShRhK",
+      "from": "url"
+    }
+  ]
+}
