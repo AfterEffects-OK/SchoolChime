@@ -40,6 +40,7 @@
 
         // デフォルトチャイム音源URL
         const DEFAULT_CHIME_URL = "https://github.com/AfterEffects-OK/SchoolChime/raw/refs/heads/main/Japanese_School_Bell02-01(-16dB).mp3";
+        const TEST_SOUND_URL = "https://github.com/AfterEffects-OK/SchoolChime/raw/refs/heads/main/Test-Sound.wav";
 
         // 曜日の定義
         const DAYS_OF_WEEK = [
@@ -228,7 +229,8 @@
             const [currentTime, setCurrentTime] = useState(new Date());
             // 音源リストを管理。デフォルト音源を初期値として設定
             const [audioSources, setAudioSources] = useState([
-                { id: 'default', name: 'スクールチャイム（デフォルト）', url: DEFAULT_CHIME_URL }
+                { id: 'default', name: 'スクールチャイム（デフォルト）', url: DEFAULT_CHIME_URL },
+                { id: 'test-sound', name: 'テスト音声', url: TEST_SOUND_URL }
             ]);
             const [schedules, setSchedules] = useState([]);
             const [isPlaying, setIsPlaying] = useState(false);
@@ -393,7 +395,12 @@
                 if (savedAudioSources) {
                     try {
                         // URLで追加された音源のみ永続化
-                        setAudioSources(JSON.parse(savedAudioSources));
+                        const loadedSources = JSON.parse(savedAudioSources);
+                        // テスト音声が保存データに含まれていない場合は追加（アップデート対応）
+                        if (!loadedSources.find(s => s.id === 'test-sound')) {
+                            loadedSources.push({ id: 'test-sound', name: 'テスト音声', url: TEST_SOUND_URL });
+                        }
+                        setAudioSources(loadedSources);
                     } catch (e) {
                         console.error("保存された音源の読み込みに失敗しました", e);
                     }
@@ -807,15 +814,17 @@
             
             // デフォルト音源のdurationを取得するためのuseEffect
             useEffect(() => {
-                const audio = new Audio(DEFAULT_CHIME_URL);
-                const handleMetadata = () => {
-                    setAudioDurations(prev => ({ ...prev, 'default': audio.duration }));
-                    audio.removeEventListener('loadedmetadata', handleMetadata);
+                const loadDuration = (id, url) => {
+                    const audio = new Audio(url);
+                    const handleMetadata = () => {
+                        setAudioDurations(prev => ({ ...prev, [id]: audio.duration }));
+                        audio.removeEventListener('loadedmetadata', handleMetadata);
+                    };
+                    audio.addEventListener('loadedmetadata', handleMetadata);
                 };
-                audio.addEventListener('loadedmetadata', handleMetadata);
-                return () => {
-                    audio.removeEventListener('loadedmetadata', handleMetadata);
-                };
+
+                loadDuration('default', DEFAULT_CHIME_URL);
+                loadDuration('test-sound', TEST_SOUND_URL);
             }, []);
 
             // 時間を mm:ss 形式にフォーマット
