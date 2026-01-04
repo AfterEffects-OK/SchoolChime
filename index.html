@@ -747,9 +747,9 @@
                                 resourceKey = `&resourcekey=${resourceKeyMatch[1]}`;
                             }
 
-                            console.log("Google Driveのリンクを変換 (docsドメイン):", fileId);
-                            // drive.google.com ではなく docs.google.com を使用することでCookie制限を回避しやすくする
-                            return `https://docs.google.com/uc?export=download&id=${fileId}${resourceKey}`;
+                            console.log("Google Driveのリンクを変換:", fileId);
+                            // docs.google.com は一部環境でブロックされるため drive.google.com に戻し、confirmパラメータを追加
+                            return `https://drive.google.com/uc?export=download&id=${fileId}${resourceKey}`;
                         }
                     }
 
@@ -1538,7 +1538,7 @@
                                                         {source.name}
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                                        {audioErrors[source.id] ? <span className="text-red-500 font-bold">⚠ 読込エラー (アクセス権限等を確認)</span> : 
+                                                        {audioErrors[source.id] ? <span className="text-red-500 font-bold">⚠ 読込失敗 (公開設定やCookieブロックを確認)</span> : 
                                                          `${formatTime(audioCurrentTimes[source.id] || 0)} / ${formatTime(audioDurations[source.id] || 0)}`}
                                                     </p>
                                                 </div>
