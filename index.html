@@ -587,7 +587,7 @@
             };
 
             // チャイム再生
-            const playChime = (schedule) => {
+            const playChime = async (schedule) => {
                 // 両方のプレイヤーを停止・リセット
                 if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
                 if (boostAudioRef.current) { boostAudioRef.current.pause(); boostAudioRef.current.currentTime = 0; }
@@ -623,7 +623,11 @@
 
                     // 出力先を設定
                     if (isSetSinkIdSupported && player.sinkId !== targetSinkId) {
-                        player.setSinkId(targetSinkId).catch(err => console.error(`出力先の変更に失敗: ${targetSinkId}`, err));
+                        try {
+                            await player.setSinkId(targetSinkId);
+                        } catch (err) {
+                            console.error(`出力先の変更に失敗: ${targetSinkId}`, err);
+                        }
                     }
 
                     // 音量設定
@@ -643,13 +647,13 @@
 
                     // 再生ソースを動的に設定
                     player.src = sourceToPlay.url;
-                    player.play()
-                        // カスタムモーダルを使うべきだが、今回はalertで代用
-                        .then(() => {
-                            setIsPlaying(true);
-                            setPlayError(null); // 再生成功時にエラーをクリア
-                        })
-                        .catch(err => setPlayError(err));
+                    try {
+                        await player.play();
+                        setIsPlaying(true);
+                        setPlayError(null); // 再生成功時にエラーをクリア
+                    } catch (err) {
+                        setPlayError(err);
+                    }
                 } else {
                     alert(`音源が見つかりません: ${schedule.name} (ID: ${audioIdToPlay})`);
                 }
