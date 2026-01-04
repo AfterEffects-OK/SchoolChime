@@ -739,7 +739,7 @@
                         if (match && match[1]) {
                             const fileId = match[1];
                             console.log("Google Driveのリンクを変換:", fileId);
-                            return `https://drive.google.com/uc?export=download&confirm=t&id=${fileId}`;
+                            return `https://drive.google.com/uc?export=download&id=${fileId}`;
                         }
                     }
 
@@ -1366,6 +1366,7 @@
                             onEnded={onAudioPauseOrEnd}
                             onTimeUpdate={onAudioTimeUpdate}
                             className="hidden"
+                            referrerPolicy="no-referrer"
                         />
 
                         {/* 増幅再生用 (Web Audio API) の非表示audio要素 */}
@@ -1377,6 +1378,7 @@
                             onTimeUpdate={onAudioTimeUpdate}
                             className="hidden"
                             crossOrigin="anonymous"
+                            referrerPolicy="no-referrer"
                         />
 
                         {/* 通常モードでのみ表示されるセクション */}
@@ -1539,6 +1541,7 @@
                                                         onDurationChange={(e) => onAudioLoadedMetadata(e, source.id)}
                                                         preload="metadata"
                                                         className="hidden"
+                                                        referrerPolicy="no-referrer"
                                                     />
                                                 )}
                                             </div>
