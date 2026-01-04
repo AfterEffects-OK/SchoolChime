@@ -1385,7 +1385,6 @@
                             onEnded={onAudioPauseOrEnd}
                             onTimeUpdate={onAudioTimeUpdate}
                             className="hidden"
-                            crossOrigin="anonymous"
                             referrerPolicy="no-referrer"
                         />
 
@@ -1539,7 +1538,7 @@
                                                         {source.name}
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                                        {audioErrors[source.id] ? <span className="text-red-500 font-bold text-[10px]">⚠ 読込失敗: 公開設定を確認するかDropbox等を推奨</span> : 
+                                                        {audioErrors[source.id] ? <span className="text-red-500 font-bold">⚠ 読込失敗 (公開設定やCookieブロックを確認)</span> : 
                                                          `${formatTime(audioCurrentTimes[source.id] || 0)} / ${formatTime(audioDurations[source.id] || 0)}`}
                                                     </p>
                                                 </div>
@@ -1563,7 +1562,6 @@
                                                         onError={() => onAudioError(source.id)}
                                                         preload="metadata"
                                                         className="hidden"
-                                                        crossOrigin="anonymous"
                                                         referrerPolicy="no-referrer"
                                                     />
                                                 )}
