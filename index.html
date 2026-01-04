@@ -275,6 +275,7 @@
             const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null); // 再生中の音源ID
             const [audioDurations, setAudioDurations] = useState({}); // { id: duration }
             const [audioCurrentTimes, setAudioCurrentTimes] = useState({}); // { id: currentTime }
+            const [audioErrors, setAudioErrors] = useState({}); // { id: true } 読み込みエラー管理用
 
             // URL追加用のステート
             const [newAudioUrl, setNewAudioUrl] = useState('');
@@ -738,8 +739,17 @@
                         
                         if (match && match[1]) {
                             const fileId = match[1];
-                            console.log("Google Driveのリンクを変換:", fileId);
-                            return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                            
+                            // resourcekeyパラメータがある場合は維持する（セキュリティアップデート対応）
+                            let resourceKey = '';
+                            const resourceKeyMatch = url.match(/[?&]resourcekey=([a-zA-Z0-9_-]+)/);
+                            if (resourceKeyMatch) {
+                                resourceKey = `&resourcekey=${resourceKeyMatch[1]}`;
+                            }
+
+                            console.log("Google Driveのリンクを変換 (docsドメイン):", fileId);
+                            // drive.google.com ではなく docs.google.com を使用することでCookie制限を回避しやすくする
+                            return `https://docs.google.com/uc?export=download&id=${fileId}${resourceKey}`;
                         }
                     }
 
@@ -798,6 +808,10 @@
                     setCurrentlyPlayingId(null);
                 } else {
                     // 別の音源を再生
+                    if (audioErrors[source.id]) {
+                        alert("この音源は読み込みエラーのため再生できません。\nリンクが正しいか、公開設定になっているか確認してください。");
+                        return;
+                    }
                     setCurrentlyPlayingId(source.id);
                     audioRef.current.src = source.url;
                     audioRef.current.play().catch(e => console.error("Playback failed:", e));
@@ -832,6 +846,11 @@
                         };
                     });
                 }
+            };
+            // 音源読み込みエラーハンドラ
+            const onAudioError = (id) => {
+                console.error(`Audio load error for id: ${id}`);
+                setAudioErrors(prev => ({ ...prev, [id]: true }));
             };
             
             // デフォルト音源のdurationを取得するためのuseEffect
@@ -1519,7 +1538,8 @@
                                                         {source.name}
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                                        {formatTime(audioCurrentTimes[source.id] || 0)} / {formatTime(audioDurations[source.id] || 0)}
+                                                        {audioErrors[source.id] ? <span className="text-red-500 font-bold">⚠ 読込エラー (アクセス権限等を確認)</span> : 
+                                                         `${formatTime(audioCurrentTimes[source.id] || 0)} / ${formatTime(audioDurations[source.id] || 0)}`}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center">
@@ -1539,6 +1559,7 @@
                                                         src={source.url} 
                                                         onLoadedMetadata={(e) => onAudioLoadedMetadata(e, source.id)} 
                                                         onDurationChange={(e) => onAudioLoadedMetadata(e, source.id)}
+                                                        onError={() => onAudioError(source.id)}
                                                         preload="metadata"
                                                         className="hidden"
                                                         referrerPolicy="no-referrer"
