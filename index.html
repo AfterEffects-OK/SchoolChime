@@ -298,7 +298,8 @@
                 owner: '',
                 repo: '',
                 path: 'schedules.json',
-                audioPath: 'audio/' // 音源保存用フォルダのデフォルト
+                audioPath: 'audio/', // 音源保存用フォルダのデフォルト
+                saveCredentials: true // 認証情報を保存するかどうか
             });
 
 
@@ -446,7 +447,13 @@
 
             // GitHub設定の保存
             useEffect(() => {
-                localStorage.setItem('schoolChimeGithubConfig', JSON.stringify(githubConfig));
+                if (githubConfig.saveCredentials) {
+                    localStorage.setItem('schoolChimeGithubConfig', JSON.stringify(githubConfig));
+                } else {
+                    // 認証情報を保存しない場合、トークンを除外して保存
+                    const { token, ...configWithoutToken } = githubConfig;
+                    localStorage.setItem('schoolChimeGithubConfig', JSON.stringify(configWithoutToken));
+                }
             }, [githubConfig]);
 
             // Web Audio API セットアップ (増幅再生用)
@@ -2175,6 +2182,18 @@
                                         <div>
                                             <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">Personal Access Token</label>
                                             <input type="password" placeholder="ghp_..." value={githubConfig.token} onChange={(e) => setGithubConfig({...githubConfig, token: e.target.value})} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm" />
+                                            <div className="flex items-center mt-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="saveCredentials" 
+                                                    checked={githubConfig.saveCredentials} 
+                                                    onChange={(e) => setGithubConfig({...githubConfig, saveCredentials: e.target.checked})} 
+                                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                />
+                                                <label htmlFor="saveCredentials" className="ml-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                                                    認証情報（トークン）をブラウザに保存する
+                                                </label>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
