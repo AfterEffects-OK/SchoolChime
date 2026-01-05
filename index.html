@@ -289,13 +289,16 @@
             const [selectedInputDeviceId, setSelectedInputDeviceId] = useState('default');
             const [micPermissionError, setMicPermissionError] = useState(null);
             const [isDragging, setIsDragging] = useState(false); // ドラッグ＆ドロップ状態
+            const [isGithubDragging, setIsGithubDragging] = useState(false); // GitHub用ドラッグ＆ドロップ状態
+            const [isUploading, setIsUploading] = useState(false); // アップロード中フラグ
 
             // GitHub設定用ステート
             const [githubConfig, setGithubConfig] = useState({
                 token: '',
                 owner: '',
                 repo: '',
-                path: 'schedules.json'
+                path: 'schedules.json',
+                audioPath: 'audio/' // 音源保存用フォルダのデフォルト
             });
 
 
@@ -436,7 +439,8 @@
             useEffect(() => {
                 const savedConfig = localStorage.getItem('schoolChimeGithubConfig');
                 if (savedConfig) {
-                    setGithubConfig(JSON.parse(savedConfig));
+                    // 保存された設定を読み込みつつ、新しい設定項目(audioPath)のデフォルト値を維持するためにマージする
+                    setGithubConfig(prev => ({ ...prev, ...JSON.parse(savedConfig) }));
                 }
             }, []);
 
@@ -497,6 +501,16 @@
 
                 return () => clearInterval(timer);
             }, [schedules, lastPlayedTime]);
+
+            // 誤操作によるタブ閉じ防止（離脱防止アラート）
+            useEffect(() => {
+                const handleBeforeUnload = (e) => {
+                    e.preventDefault();
+                    e.returnValue = '';
+                };
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+            }, []);
 
             // アラームチェックロジック
             const checkAlarm = (now) => {
@@ -1300,6 +1314,99 @@
                 }
             };
             
+            // GitHubへの音源アップロード処理
+            const handleGithubAudioUpload = async (files) => {
+                if (!githubConfig.token || !githubConfig.owner || !githubConfig.repo) {
+                    alert('GitHub設定（トークン、ユーザー名、リポジトリ名）を入力してください。');
+                    return;
+                }
+
+                setIsUploading(true);
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const file of Array.from(files)) {
+                    try {
+                        // パスの構築 (末尾のスラッシュ処理など)
+                        const dir = githubConfig.audioPath ? githubConfig.audioPath.replace(/\/$/, '') : 'audio';
+                        const path = `${dir}/${file.name}`;
+                        const apiUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${path}`;
+
+                        // ファイル読み込み (Base64)
+                        const content = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result.split(',')[1]);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+
+                        // 既存ファイルの確認 (SHA取得)
+                        let sha = null;
+                        try {
+                            const res = await fetch(apiUrl, {
+                                headers: {
+                                    'Authorization': `token ${githubConfig.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                sha = data.sha;
+                            }
+                        } catch (e) { /* ignore */ }
+
+                        // アップロード (PUT)
+                        const body = {
+                            message: `Upload audio: ${file.name}`,
+                            content: content,
+                            ...(sha ? { sha } : {})
+                        };
+
+                        const putRes = await fetch(apiUrl, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `token ${githubConfig.token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!putRes.ok) throw new Error('Upload failed');
+
+                        const data = await putRes.json();
+                        const downloadUrl = data.content.download_url;
+
+                        // 音源リストに追加
+                        setAudioSources(prev => [
+                            ...prev,
+                            {
+                                id: `github-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                name: file.name,
+                                url: downloadUrl,
+                                from: 'github'
+                            }
+                        ]);
+                        successCount++;
+
+                    } catch (error) {
+                        console.error(`Failed to upload ${file.name}:`, error);
+                        failCount++;
+                    }
+                }
+
+                setIsUploading(false);
+                alert(`${successCount}件のファイルをアップロードしました。${failCount > 0 ? `(${failCount}件失敗)` : ''}`);
+            };
+
+            // GitHub用ドラッグ＆ドロップハンドラ
+            const handleGithubDragOver = (e) => { e.preventDefault(); e.stopPropagation(); setIsGithubDragging(true); };
+            const handleGithubDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); setIsGithubDragging(false); };
+            const handleGithubDrop = (e) => {
+                e.preventDefault(); e.stopPropagation(); setIsGithubDragging(false);
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) handleGithubAudioUpload(files);
+            };
+
             // 次のチャイムデータを計算
             const nextChimeData = getNextChime(currentTime);
 
@@ -2061,6 +2168,39 @@
                                         <div>
                                             <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">File Path (保存先パス)</label>
                                             <input type="text" placeholder="data/schedules.json" value={githubConfig.path} onChange={(e) => setGithubConfig({...githubConfig, path: e.target.value})} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm" />
+                                        </div>
+                                        
+                                        <div className="border-t dark:border-gray-700 pt-4 mt-2">
+                                            <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+                                                <IconUpload className="w-4 h-4" /> 音源ファイルのアップロード
+                                            </h4>
+                                            <div className="mb-2">
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Audio Folder Path (音源保存先フォルダ)</label>
+                                                <input type="text" placeholder="audio/" value={githubConfig.audioPath || ''} onChange={(e) => setGithubConfig({...githubConfig, audioPath: e.target.value})} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm" />
+                                            </div>
+                                            
+                                            <div
+                                                onDragOver={handleGithubDragOver}
+                                                onDragLeave={handleGithubDragLeave}
+                                                onDrop={handleGithubDrop}
+                                                className={`
+                                                    border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
+                                                    ${isGithubDragging 
+                                                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30' 
+                                                        : 'border-gray-300 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-400 bg-gray-50 dark:bg-gray-700/50'}
+                                                `}
+                                            >
+                                                {isUploading ? (
+                                                    <div className="text-green-600 font-bold animate-pulse">アップロード中...</div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center gap-1 pointer-events-none">
+                                                        <IconUpload className={`w-8 h-8 ${isGithubDragging ? 'text-green-600' : 'text-gray-400'}`} />
+                                                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">ここに音源ファイルをドロップ</span>
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400">指定フォルダにアップロードし、リストに追加します</span>
+                                                    </div>
+                                                )}
+                                                <input type="file" accept="audio/*" onChange={(e) => handleGithubAudioUpload(e.target.files)} className="hidden" multiple />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="p-4 bg-gray-50 dark:bg-gray-700 flex justify-end gap-2 rounded-b-lg">
