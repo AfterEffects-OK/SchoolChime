@@ -799,6 +799,19 @@
                     alert('音源のURLと表示名を入力してください。');
                     return;
                 }
+
+                // Google Drive等のURLの場合、確実な再生のためにGitHubアップロードを推奨する確認を表示
+                if (newAudioUrl.includes('drive.google.com') || newAudioUrl.includes('docs.google.com')) {
+                    const msg = '【Google Driveのリンクについて】\n' +
+                                'Google DriveのURLは ブラウザのセキュリティ制限により再生できない場合が多いです。\n' +
+                                '（※URL変換を行っても、再生が不安定な場合があります）\n\n' +
+                                '確実な動作のためには「GitHub連携」のアップロード機能を使用することを強く推奨します。\n\n' +
+                                'このままURLとして登録しますか？';
+                    if (!confirm(msg)) {
+                        return;
+                    }
+                }
+
                 const transformedUrl = transformCloudUrl(newAudioUrl);
                 const newSource = {
                     id: `custom-${Date.now()}`,
